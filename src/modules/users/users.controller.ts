@@ -36,7 +36,7 @@ export class UsersController {
       const userFromGoogle = req.user as any;
       if (!userFromGoogle) {
         // Handle error...
-        return res.redirect("http://localhost:8080/login?error=auth_failed");
+        return res.redirect("https://eventsh.com/login?error=auth_failed");
       }
 
       // 1. Check if the user already exists in your database
@@ -62,10 +62,10 @@ export class UsersController {
       const token = this.jwtService.sign(payload);
 
       // 4. Redirect to the frontend with the token
-      return res.redirect(`http://localhost:8080/dashboard?token=${token}`);
+      return res.redirect(`https://eventsh.com/dashboard?token=${token}`);
     } catch (error) {
       // Handle error...
-      return res.redirect("http://localhost:8080/login?error=auth_failed");
+      return res.redirect("https://eventsh.com/login?error=auth_failed");
     }
   }
 
