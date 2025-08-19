@@ -62,7 +62,7 @@ export class UsersController {
       const token = this.jwtService.sign(payload);
 
       // 4. Redirect to the frontend with the token
-      return res.redirect(`https://eventsh.com/dashboard?token=${token}`);
+      return res.redirect(`https://eventsh.com/user-dashboard?token=${token}`);
     } catch (error) {
       // Handle error...
       return res.redirect("https://eventsh.com/login?error=auth_failed");

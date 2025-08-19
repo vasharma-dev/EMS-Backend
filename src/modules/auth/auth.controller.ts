@@ -59,7 +59,7 @@ export class AuthController {
       console.log("Claeeddddddddd");
       const userFromGoogle = req.user as any;
       if (!userFromGoogle) {
-        return res.redirect("http://localhost:8080/login?error=auth_failed");
+        return res.redirect("https://eventsh.com/login?error=auth_failed");
       }
 
       // 1. Check if the user already exists in your database
@@ -93,14 +93,12 @@ export class AuthController {
 
       // 4. Redirect to the frontend with the token
       // This is the correct line to use!
-      return res.redirect(
-        `http://localhost:8080/user-dashboard?token=${token}`
-      );
+      return res.redirect(`https://eventsh.com/user-dashboard?token=${token}`);
       // Remove the res.json line
       // res.json({ message: "User logged in successfully", token });
     } catch (error) {
       console.error("Auth redirect error:", error);
-      return res.redirect("http://localhost:8080/login?error=auth_failed");
+      return res.redirect("https://eventsh.com/login?error=auth_failed");
     }
   }
 
