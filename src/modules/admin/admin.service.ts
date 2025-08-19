@@ -32,7 +32,7 @@ export class AdminService {
     private readonly mailService: MailService
   ) {}
 
-  async create(createAdminDto: CreateAdminDto, creatorId: string) {
+  async create(createAdminDto: CreateAdminDto) {
     try {
       // 1. Check if email already exists
       const existingAdmin = await this.adminModel.findOne({
@@ -51,20 +51,11 @@ export class AdminService {
 
       // 3. Fetch creator name for the email message
       let creatorName = "System";
-      if (creatorId) {
-        const creatorAdmin = await this.adminModel
-          .findById(creatorId)
-          .select("name");
-        if (creatorAdmin) {
-          creatorName = creatorAdmin.name;
-        }
-      }
 
       // 4. Create new admin object
       const adminToCreate = {
         ...createAdminDto,
         password: hashedPassword,
-        createdBy: creatorId || null,
       };
 
       // 5. Save new admin

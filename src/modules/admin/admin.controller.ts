@@ -21,11 +21,11 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post("create-admin")
-  @UseGuards(JwtAuthGuard)
-  async create(@Body() createAdminDto: CreateAdminDto, @Req() req: any) {
+  // @UseGuards(JwtAuthGuard)
+  async create(@Body() createAdminDto: CreateAdminDto) {
     try {
-      const creatorId = req.user.sub; // sub from JWT payload
-      return this.adminService.create(createAdminDto, creatorId);
+      // const creatorId = req.user.sub; // sub from JWT payload
+      return this.adminService.create(createAdminDto);
     } catch (error) {
       console.log(error);
       throw error;
