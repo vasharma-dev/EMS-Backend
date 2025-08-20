@@ -17,6 +17,7 @@ import { Request, Response } from "express";
 import { CreateUserDto } from "../users/dto/create-users.dto";
 import { UsersService } from "../users/users.service";
 import { JwtService } from "@nestjs/jwt";
+import { AuthGuard } from "@nestjs/passport";
 
 @Controller("auth")
 export class AuthController {
@@ -47,13 +48,14 @@ export class AuthController {
   }
 
   @Get("google")
-  @UseGuards(GoogleAuthGuard)
+  @UseGuards(AuthGuard("google"))
   async googleAuth() {
+    console.log("::::Vansh Sharma");
     // This is the initial endpoint to start the Google auth flow.
   }
 
   @Get("google/redirect")
-  @UseGuards(GoogleAuthGuard)
+  @UseGuards(AuthGuard("google"))
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     try {
       console.log("Claeeddddddddd");
@@ -111,7 +113,7 @@ export class AuthController {
   async instagramRedirect(@Req() req: Request, @Res() res: Response) {
     const user = req.user as any;
     if (!user) {
-      return res.redirect("http://localhost:8080/login?error=auth_failed");
+      return res.redirect("https://eventsh.com/login?error=auth_failed");
     }
 
     // Check if the user exists based on provider ID, and if not, create them.
