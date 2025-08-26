@@ -1,0 +1,255 @@
+import { Injectable } from "@nestjs/common";
+import { CreateShopkeeperStoreDto } from "./dto/create-shopkeeper-store.dto";
+import { InjectModel } from "@nestjs/mongoose/dist";
+import { ShopfrontStore } from "./entities/shopkeeper-store.entity";
+import { Model } from "mongoose";
+import { UpdateShopkeeperStoreDto } from "./dto/update-shopkeeper-store.dto";
+
+@Injectable()
+export class ShopkeeperStoresService {
+  constructor(
+    @InjectModel(ShopfrontStore.name)
+    private shopkeeperStoreModel: Model<ShopfrontStore>
+  ) {}
+
+  async create(createShopkeeperStoreDto: CreateShopkeeperStoreDto) {
+    try {
+      const shopfrontStore = new this.shopkeeperStoreModel({
+        shopkeeperId: createShopkeeperStoreDto.shopkeeperId,
+        settings: {
+          general: {
+            storeName: createShopkeeperStoreDto.general.storeName,
+            tagline: createShopkeeperStoreDto.general.tagline,
+            description: createShopkeeperStoreDto.general.description ?? "",
+            logo: createShopkeeperStoreDto.general.logo ?? "",
+            favicon: createShopkeeperStoreDto.general.favicon ?? "",
+            contactInfo: {
+              phone: createShopkeeperStoreDto.general.contactInfo.phone ?? "",
+              email: createShopkeeperStoreDto.general.contactInfo.email ?? "",
+              address:
+                createShopkeeperStoreDto.general.contactInfo.address ?? "",
+              hours: createShopkeeperStoreDto.general.contactInfo.hours ?? "",
+              website:
+                createShopkeeperStoreDto.general.contactInfo.website ?? "",
+            },
+          },
+          design: {
+            theme: createShopkeeperStoreDto.design.theme,
+            primaryColor: createShopkeeperStoreDto.design.primaryColor,
+            secondaryColor: createShopkeeperStoreDto.design.secondaryColor,
+            fontFamily: createShopkeeperStoreDto.design.fontFamily,
+            layout: createShopkeeperStoreDto.design.layout,
+            bannerImage: createShopkeeperStoreDto.design.bannerImage ?? "",
+            showBanner: createShopkeeperStoreDto.design.showBanner,
+            bannerHeight: createShopkeeperStoreDto.design.bannerHeight,
+          },
+          features: {
+            showSearch: createShopkeeperStoreDto.features.showSearch,
+            showFilters: createShopkeeperStoreDto.features.showFilters,
+            showReviews: createShopkeeperStoreDto.features.showReviews,
+            showWishlist: createShopkeeperStoreDto.features.showWishlist,
+            showSocialMedia: createShopkeeperStoreDto.features.showSocialMedia,
+            enableChat: createShopkeeperStoreDto.features.enableChat,
+            showNewsletter: createShopkeeperStoreDto.features.showNewsletter,
+          },
+          seo: {
+            metaTitle: createShopkeeperStoreDto.seo.metaTitle,
+            metaDescription: createShopkeeperStoreDto.seo.metaDescription ?? "",
+            keywords: createShopkeeperStoreDto.seo.keywords ?? "",
+            customCode: createShopkeeperStoreDto.seo.customCode ?? "",
+          },
+        },
+      });
+
+      const result = await shopfrontStore.save();
+
+      console.log(result, "result");
+
+      return {
+        message: "Shopfront settings created successfully",
+        data: result,
+      };
+    } catch (error) {
+      console.error("Error creating shopfront settings:", error);
+      throw error;
+    }
+  }
+
+  findAll() {
+    return `This action returns all shopkeeperStores`;
+  }
+
+  async findOneByShopkeeperId(shopkeeperId: string) {
+    try {
+      const shopfrontStore = await this.shopkeeperStoreModel
+        .findOne({ shopkeeperId })
+        .exec();
+      if (!shopfrontStore) {
+        return { message: "Shopfront store not found", data: null };
+      }
+      return { message: "Shopfront store found", data: shopfrontStore };
+    } catch (error) {
+      console.error("Error finding shopfront store by shopkeeperId:", error);
+      throw error;
+    }
+  }
+
+  async update(
+    shopkeeperId: string,
+    updateShopkeeperStoreDto: UpdateShopkeeperStoreDto,
+    bannerImagePath?: string
+  ) {
+    try {
+      const existingStore = await this.shopkeeperStoreModel
+        .findOne({ shopkeeperId })
+        .exec();
+
+      if (!existingStore) {
+        return {
+          message: "Shopfront store not found",
+          data: null,
+        };
+      }
+
+      const updateData: any = {};
+
+      // Update general settings if provided
+      if (updateShopkeeperStoreDto.general) {
+        updateData["settings.general"] = {
+          storeName:
+            updateShopkeeperStoreDto.general.storeName ??
+            existingStore.settings.general.storeName,
+          tagline:
+            updateShopkeeperStoreDto.general.tagline ??
+            existingStore.settings.general.tagline,
+          description:
+            updateShopkeeperStoreDto.general.description ??
+            existingStore.settings.general.description,
+          logo:
+            updateShopkeeperStoreDto.general.logo ??
+            existingStore.settings.general.logo,
+          favicon:
+            updateShopkeeperStoreDto.general.favicon ??
+            existingStore.settings.general.favicon,
+          contactInfo: {
+            phone:
+              updateShopkeeperStoreDto.general.contactInfo?.phone ??
+              existingStore.settings.general.contactInfo.phone,
+            email:
+              updateShopkeeperStoreDto.general.contactInfo?.email ??
+              existingStore.settings.general.contactInfo.email,
+            address:
+              updateShopkeeperStoreDto.general.contactInfo?.address ??
+              existingStore.settings.general.contactInfo.address,
+            hours:
+              updateShopkeeperStoreDto.general.contactInfo?.hours ??
+              existingStore.settings.general.contactInfo.hours,
+            website:
+              updateShopkeeperStoreDto.general.contactInfo?.website ??
+              existingStore.settings.general.contactInfo.website,
+          },
+        };
+      }
+
+      // Update design settings if provided
+      if (updateShopkeeperStoreDto.design) {
+        updateData["settings.design"] = {
+          theme:
+            updateShopkeeperStoreDto.design.theme ??
+            existingStore.settings.design.theme,
+          primaryColor:
+            updateShopkeeperStoreDto.design.primaryColor ??
+            existingStore.settings.design.primaryColor,
+          secondaryColor:
+            updateShopkeeperStoreDto.design.secondaryColor ??
+            existingStore.settings.design.secondaryColor,
+          fontFamily:
+            updateShopkeeperStoreDto.design.fontFamily ??
+            existingStore.settings.design.fontFamily,
+          layout:
+            updateShopkeeperStoreDto.design.layout ??
+            existingStore.settings.design.layout,
+          // Use the uploaded banner path if provided, otherwise use existing or new value from DTO
+          bannerImage:
+            bannerImagePath ??
+            updateShopkeeperStoreDto.design.bannerImage ??
+            existingStore.settings.design.bannerImage,
+          showBanner:
+            updateShopkeeperStoreDto.design.showBanner ??
+            existingStore.settings.design.showBanner,
+          bannerHeight:
+            updateShopkeeperStoreDto.design.bannerHeight ??
+            existingStore.settings.design.bannerHeight,
+        };
+      }
+
+      // Update features settings if provided
+      if (updateShopkeeperStoreDto.features) {
+        updateData["settings.features"] = {
+          showSearch:
+            updateShopkeeperStoreDto.features.showSearch ??
+            existingStore.settings.features.showSearch,
+          showFilters:
+            updateShopkeeperStoreDto.features.showFilters ??
+            existingStore.settings.features.showFilters,
+          showReviews:
+            updateShopkeeperStoreDto.features.showReviews ??
+            existingStore.settings.features.showReviews,
+          showWishlist:
+            updateShopkeeperStoreDto.features.showWishlist ??
+            existingStore.settings.features.showWishlist,
+          showSocialMedia:
+            updateShopkeeperStoreDto.features.showSocialMedia ??
+            existingStore.settings.features.showSocialMedia,
+          enableChat:
+            updateShopkeeperStoreDto.features.enableChat ??
+            existingStore.settings.features.enableChat,
+          showNewsletter:
+            updateShopkeeperStoreDto.features.showNewsletter ??
+            existingStore.settings.features.showNewsletter,
+        };
+      }
+
+      // Update SEO settings if provided
+      if (updateShopkeeperStoreDto.seo) {
+        updateData["settings.seo"] = {
+          metaTitle:
+            updateShopkeeperStoreDto.seo.metaTitle ??
+            existingStore.settings.seo.metaTitle,
+          metaDescription:
+            updateShopkeeperStoreDto.seo.metaDescription ??
+            existingStore.settings.seo.metaDescription,
+          keywords:
+            updateShopkeeperStoreDto.seo.keywords ??
+            existingStore.settings.seo.keywords,
+          customCode:
+            updateShopkeeperStoreDto.seo.customCode ??
+            existingStore.settings.seo.customCode,
+        };
+      }
+
+      // Perform the update
+      const updatedStore = await this.shopkeeperStoreModel
+        .findOneAndUpdate(
+          { shopkeeperId },
+          { $set: updateData },
+          { new: true, runValidators: true }
+        )
+        .exec();
+
+      console.log(updatedStore, "updated store");
+
+      return {
+        message: "Shopfront settings updated successfully",
+        data: updatedStore,
+      };
+    } catch (error) {
+      console.error("Error updating shopfront settings:", error);
+      throw error;
+    }
+  }
+
+  remove(id: number) {
+    return `This action removes a #${id} shopkeeperStore`;
+  }
+}

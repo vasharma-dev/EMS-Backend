@@ -11,6 +11,8 @@ import { AdminModule } from "./modules/admin/admin.module";
 import { RolesModule } from "./modules/roles/roles.module";
 import { MailModule } from "./modules/roles/mail.module";
 import { ProductsModule } from "./modules/products/products.module";
+import { OtpModule } from "./modules/otp/otp.module";
+import { ShopkeeperStoresModule } from "./modules/shopkeeper-stores/shopkeeper-stores.module";
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { ProductsModule } from "./modules/products/products.module";
     ),
     AuthModule,
     UsersModule,
+    OtpModule,
+    ShopkeeperStoresModule,
     EventsModule,
     OrganizersModule,
     ShopkeepersModule,

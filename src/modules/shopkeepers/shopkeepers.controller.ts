@@ -13,6 +13,16 @@ import { CreateShopkeeperDto } from "./dto/createShopkeeper.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
+// DTO for OTP requests
+class RequestOTPDto {
+  email: string;
+}
+
+class VerifyOTPDto {
+  email: string;
+  otp: string;
+}
+
 @Controller("shopkeepers")
 export class ShopkeepersController {
   constructor(private shopkeepersService: ShopkeepersService) {}
@@ -36,6 +46,37 @@ export class ShopkeepersController {
     }
   }
 
+  // New OTP-based authentication endpoints
+  @Post("request-otp")
+  async requestOTP(@Body() body: any) {
+    try {
+      console.log(body, "vansh Sharm a");
+      return await this.shopkeepersService.requestOTP(body.email);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post("verify-otp")
+  async verifyOTP(@Body() body: any) {
+    try {
+      console.log(body, "vansh Sharma");
+      return await this.shopkeepersService.verifyOTP(body.email, body.otp);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post("resend-otp")
+  async resendOTP(@Body() body: RequestOTPDto) {
+    try {
+      return await this.shopkeepersService.resendOTP(body.email);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Original login method (keeping for backward compatibility)
   @Post("login")
   async login(@Body() body: LoginDto) {
     try {
@@ -64,14 +105,4 @@ export class ShopkeepersController {
       throw error;
     }
   }
-
-  // @Get("dashboard-data")
-  // async getDashboardData(@Req() req: any) {
-  //   try {
-  //     const shopkeeperId = req.user.userId;
-  //     return await this.shopkeepersService.getDashboardData(shopkeeperId);
-  //   } catch (error) {
-  //     throw error;
-  //   }
-  // }
 }

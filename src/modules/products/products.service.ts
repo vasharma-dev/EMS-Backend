@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { InjectModel } from "@nestjs/mongoose/dist";
@@ -13,27 +17,16 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto, shopkeeperId: string) {
     try {
-      console.log(createProductDto, "Vansh Sharma");
-
-      // Create product instance with all fields from DTO
+      // Build new product data, matching the schema and DTO structure
       const product = new this.productModel({
         name: createProductDto.name,
         description: createProductDto.description,
-        price: createProductDto.price,
-        compareAtPrice: createProductDto.compareAtPrice,
-        cost: createProductDto.cost,
         sku: createProductDto.sku,
         barcode: createProductDto.barcode,
         category: createProductDto.category,
         tags: createProductDto.tags || [],
         images: createProductDto.images || [],
-        inventory: {
-          quantity: createProductDto.inventory.quantity,
-          trackQuantity: createProductDto.inventory.trackQuantity,
-          allowBackorder: createProductDto.inventory.allowBackorder,
-          lowStockThreshold: createProductDto.inventory.lowStockThreshold,
-        },
-        variants: createProductDto.variants || [],
+        subcategories: createProductDto.subcategories || [],
         status: createProductDto.status,
         weight: createProductDto.weight,
         dimensions: createProductDto.dimensions,
@@ -43,7 +36,6 @@ export class ProductsService {
 
       const result = await product.save();
 
-      // Save product to database
       return { message: "Product created successfully", data: result };
     } catch (error) {
       console.error("Error creating product:", error);
@@ -71,8 +63,18 @@ export class ProductsService {
     return `This action returns all products`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} product`;
+  async findOne(id: string) {
+    try {
+      const product = await this.productModel.find({ _id: id });
+      if (!product) {
+        throw new NotFoundException("Product Not Found");
+      }
+
+      return { message: "Product Found", data: product };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {

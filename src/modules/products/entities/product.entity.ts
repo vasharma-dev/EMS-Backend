@@ -1,19 +1,30 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
-export type ProductDocument = Product & Document;
+// --- Interfaces ---
 
-// Interface for ProductVariant embedded document (no separate schema class)
 export interface ProductVariant {
   id: number;
   title: string;
-  price: string;
-  compareAtPrice?: string;
+  price: number;
+  compareAtPrice?: number;
   sku: string;
   barcode?: string;
   inventory: number;
+  lowstockThreshold?: number;
+  trackQuantity: boolean;
   options?: Record<string, any>;
 }
+
+export interface ProductSubcategory {
+  id: number;
+  name: string;
+  description?: string;
+  basePrice?: number;
+  variants: ProductVariant[];
+}
+
+export type ProductDocument = Product & Document;
 
 @Schema({ timestamps: true, collection: "products" })
 export class Product {
@@ -23,14 +34,8 @@ export class Product {
   @Prop()
   description?: string;
 
-  @Prop({ required: true, type: Number })
-  price: number;
-
   @Prop({ type: Number })
   compareAtPrice?: number;
-
-  @Prop({ required: true, type: Number })
-  cost: number;
 
   @Prop({ required: true })
   sku: string;
@@ -47,38 +52,34 @@ export class Product {
   @Prop({ type: [String], default: [] })
   images: string[];
 
-  @Prop({
-    type: {
-      quantity: { type: Number, required: true },
-      trackQuantity: { type: Boolean, default: true, required: true },
-      allowBackorder: { type: Boolean, default: false, required: true },
-      lowStockThreshold: { type: Number, default: 10, required: true },
-    },
-    required: true,
-  })
-  inventory: {
-    quantity: number;
-    trackQuantity: boolean;
-    allowBackorder: boolean;
-    lowStockThreshold: number;
-  };
+  // 💡 No top-level inventory here anymore
 
   @Prop({
     type: [
       {
         id: { type: Number, required: true },
-        title: { type: String, required: true },
-        price: { type: Number, required: true },
-        compareAtPrice: { type: Number },
-        sku: { type: String, required: true },
-        barcode: { type: String },
-        inventory: { type: Number, required: true },
-        options: { type: Object }, // Flexible object for variant options
+        name: { type: String, required: true },
+        description: { type: String },
+        basePrice: { type: Number },
+        variants: [
+          {
+            id: { type: Number, required: true },
+            title: { type: String, required: true },
+            price: { type: Number, required: true },
+            compareAtPrice: { type: Number },
+            sku: { type: String, required: true },
+            barcode: { type: String },
+            inventory: { type: Number, required: true },
+            lowstockThreshold: { type: Number, default: 10 },
+            trackQuantity: { type: Boolean, default: true },
+            options: { type: Object, default: {} },
+          },
+        ],
       },
     ],
     default: [],
   })
-  variants?: ProductVariant[];
+  subcategories: ProductSubcategory[];
 
   @Prop({ enum: ["active", "draft", "archived"], default: "active" })
   status: "active" | "draft" | "archived";

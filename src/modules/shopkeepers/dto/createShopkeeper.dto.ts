@@ -55,11 +55,5 @@ export class CreateShopkeeperDto {
   description?: string;
 
   @IsEmail()
-  @IsNotEmpty()
   businessEmail: string;
-
-  @IsObject()
-  @ValidateNested({ each: true })
-  @Type(() => BusinessHourDto)
-  businessHours: Record<string, BusinessHourDto>;
 }

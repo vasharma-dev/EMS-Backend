@@ -14,7 +14,7 @@ export class Shopkeeper {
   @Prop({ required: true, unique: true })
   email: string;
 
-  @Prop({ required: true })
+  @Prop()
   businessEmail: string;
 
   @Prop({ required: true })

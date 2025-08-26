@@ -103,9 +103,13 @@ export class ProductsController {
     }
   }
 
-  @Get(":id")
+  @Get("get-product-details/:id")
   findOne(@Param("id") id: string) {
-    return this.productsService.findOne(+id);
+    try {
+      return this.productsService.findOne(id);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   @Patch(":id")

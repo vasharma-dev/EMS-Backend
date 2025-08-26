@@ -14,6 +14,7 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 
+// --- Variant DTO (all inventory and pricing at variant level) ---
 export class ProductVariantDto {
   @IsNumber()
   @IsNotEmpty()
@@ -40,28 +41,46 @@ export class ProductVariantDto {
   barcode?: string;
 
   @IsNumber()
-  @IsNotEmpty()
+  @Min(0)
   inventory: number;
+
+  @IsBoolean()
+  trackQuantity: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  lowstockThreshold?: number;
 
   @IsOptional()
   @IsObject()
   options?: Record<string, any>;
 }
 
-export class InventoryDto {
-  @Min(0)
-  quantity: number;
-
-  @IsBoolean()
-  trackQuantity: boolean;
-
-  @IsBoolean()
-  allowBackorder: boolean;
-
+// --- Subcategory DTO ---
+export class ProductSubcategoryDto {
   @IsNumber()
-  lowStockThreshold: number;
+  @IsNotEmpty()
+  id: number;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  basePrice?: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantDto)
+  variants: ProductVariantDto[];
 }
 
+// --- Dimensions & SEO DTOs (unchanged) ---
 export class DimensionsDto {
   @IsOptional()
   @IsNumber()
@@ -88,6 +107,7 @@ export class SeoDto {
   description?: string;
 }
 
+// --- Create Product DTO ---
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
@@ -96,18 +116,6 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  price: string;
-
-  @IsOptional()
-  @IsString()
-  compareAtPrice?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  cost: string;
 
   @IsString()
   @IsNotEmpty()
@@ -131,14 +139,10 @@ export class CreateProductDto {
   @IsString({ each: true })
   images?: string[];
 
-  @ValidateNested()
-  @Type(() => InventoryDto)
-  inventory: InventoryDto;
-
-  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ProductVariantDto)
-  variants?: ProductVariantDto[];
+  @Type(() => ProductSubcategoryDto)
+  subcategories: ProductSubcategoryDto[];
 
   @IsEnum(["active", "draft", "archived"])
   status: "active" | "draft" | "archived";
