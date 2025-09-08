@@ -1,5 +1,7 @@
+import * as mongoose from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
+import slugify from "slugify";
 
 export interface ContactInfo {
   phone?: string;
@@ -58,6 +60,14 @@ export class ShopfrontStore {
   shopkeeperId: Types.ObjectId;
 
   @Prop({
+    type: String,
+    unique: true,
+    index: true,
+    required: true,
+  })
+  slug: string; // slug field for URL
+
+  @Prop({
     type: Object,
     required: true,
     default: {
@@ -107,3 +117,14 @@ export class ShopfrontStore {
 
 export const ShopfrontStoreSchema =
   SchemaFactory.createForClass(ShopfrontStore);
+
+// Add pre-save hook to generate slug before saving
+ShopfrontStoreSchema.pre<ShopkeeperStoreDocument>("save", function (next) {
+  if (this.isModified("settings.general.storeName") || !this.slug) {
+    this.slug = slugify(this.settings.general.storeName, {
+      lower: true,
+      strict: true,
+    });
+  }
+  next();
+});

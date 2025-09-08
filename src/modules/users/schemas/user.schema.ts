@@ -27,6 +27,9 @@ export class User {
   providerId: string;
 
   @Prop()
+  whatsAppNumber?: string;
+
+  @Prop()
   createdAt: Date;
 }
 

@@ -113,7 +113,7 @@ export class AuthController {
   async instagramRedirect(@Req() req: Request, @Res() res: Response) {
     const user = req.user as any;
     if (!user) {
-      return res.redirect("https://eventsh.com/login?error=auth_failed");
+      return res.redirect("http://localhost:8080/login?error=auth_failed");
     }
 
     // Check if the user exists based on provider ID, and if not, create them.

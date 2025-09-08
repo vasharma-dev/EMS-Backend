@@ -4,6 +4,7 @@ import { InjectModel } from "@nestjs/mongoose/dist";
 import { ShopfrontStore } from "./entities/shopkeeper-store.entity";
 import { Model } from "mongoose";
 import { UpdateShopkeeperStoreDto } from "./dto/update-shopkeeper-store.dto";
+import slugify from "slugify/slugify";
 
 @Injectable()
 export class ShopkeeperStoresService {
@@ -77,6 +78,64 @@ export class ShopkeeperStoresService {
 
   findAll() {
     return `This action returns all shopkeeperStores`;
+  }
+
+  async findOneByShopName(shopName: string) {
+    try {
+      const shopfrontStore = await this.shopkeeperStoreModel.findOne({
+        "settings.general.storeName": shopName,
+      });
+      if (!shopfrontStore) {
+        return { message: "Shopfront store not found", data: null };
+      }
+      return { message: "Shopfront store found", data: shopfrontStore };
+    } catch (error) {
+      console.error("Error finding shopfront store by shopName:", error);
+      throw error;
+    }
+  }
+
+  async findBySlug(slug: string) {
+    try {
+      // Try to find by slug first
+      let store = await this.shopkeeperStoreModel.findOne({ slug }).exec();
+
+      console.log(store, "Store");
+      if (store) {
+        return store;
+      }
+
+      // If not found, iterate all stores to check generated slug matches
+      const allStores = await this.shopkeeperStoreModel.find().exec();
+
+      for (const s of allStores) {
+        try {
+          const genSlug = slugify(s.settings.general.storeName, {
+            lower: true,
+            strict: true,
+          });
+          console.log(genSlug, "genSlug");
+
+          if (genSlug === slug) {
+            // Save slug for faster future lookup
+            s.slug = genSlug;
+            try {
+              await s.save();
+            } catch (saveError) {
+              console.error("Failed to save slug for store", s._id, saveError);
+            }
+            return s;
+          }
+        } catch (genSlugError) {
+          console.error("Error generating slug for store", s._id, genSlugError);
+        }
+      }
+
+      return { message: "Shopfront store found" };
+    } catch (error) {
+      console.error("Error in findBySlug:", error);
+      return null;
+    }
   }
 
   async findOneByShopkeeperId(shopkeeperId: string) {

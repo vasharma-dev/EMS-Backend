@@ -14,6 +14,7 @@ import { JwtService } from "@nestjs/jwt";
 import { MailService } from "../roles/mail.service";
 import { CreateShopkeeperDto } from "./dto/createShopkeeper.dto";
 import { Otp } from "../otp/entities/otp.entity";
+import { Types } from "mongoose";
 
 @Injectable()
 export class ShopkeepersService {
@@ -34,7 +35,16 @@ export class ShopkeepersService {
   }
 
   async list() {
-    return this.shopModel.find().exec();
+    try {
+      const shopkeeper = await this.shopModel.find().exec();
+      if (!shopkeeper) {
+        throw new NotFoundException("Shopkeeper Not Found");
+      }
+      return { message: "Shopkeeper Found", data: shopkeeper };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async getByEmail(email: string) {
@@ -52,13 +62,22 @@ export class ShopkeepersService {
   }
 
   async get(id: string) {
-    return this.shopModel.findById(id).exec();
+    try {
+      const shopkeeper = await this.shopModel.findOne({ _id: id });
+      if (!shopkeeper) {
+        throw new NotFoundException("Shopkeeper not found");
+      }
+      return { message: "Shopkeeper Found", data: shopkeeper };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   // Request OTP with your existing Otp schema
   async requestOTP(email: string) {
     try {
-      const normalizedEmail = this.normalizeEmail(email);
+      const normalizedEmail = this.normalizeEmail(email); // ensure lowercase+trim
       console.log(`Requesting OTP for: ${normalizedEmail}`);
 
       const shopkeeper = await this.shopModel.findOne({
@@ -70,30 +89,38 @@ export class ShopkeepersService {
         throw new NotFoundException("Shopkeeper not found or not approved");
       }
 
-      // Generate 6-digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-      // Delete any existing OTPs for this email and role
-      await this.otpModel.deleteMany({
-        email: normalizedEmail,
-        role: "shopkeeper",
-      });
+      const channel = "business_email";
+      const role = "shopkeeper";
+      const identifier = normalizedEmail;
 
-      // Create new OTP document using your existing schema
-      const otpDoc = new this.otpModel({
-        email: normalizedEmail,
-        role: "shopkeeper", // Set role as shopkeeper
-        otp,
-        expiresAt,
-        attempts: 0,
-        verified: false,
-      });
+      // Optional: Cooldown guard (e.g., 30s). Uncomment if wanted.
+      // const existing = await this.otpModel.findOne({ channel, role, identifier });
+      // if (existing?.lastSentAt && (Date.now() - new Date(existing.lastSentAt).getTime()) < 30_000) {
+      //   throw new BadRequestException("Please wait before requesting a new OTP");
+      // }
 
-      await otpDoc.save();
+      // Upsert by channel/role/identifier
+      await this.otpModel.findOneAndUpdate(
+        { channel, role, identifier },
+        {
+          email: normalizedEmail, // keep legacy field if other code reads it
+          otp,
+          expiresAt,
+          attempts: 0,
+          verified: false,
+          lastSentAt: new Date(),
+          channel,
+          identifier,
+          role,
+        },
+        { upsert: true, new: true }
+      );
+
       console.log(`OTP saved to database for ${normalizedEmail}: ${otp}`);
 
-      // Send OTP to business email
       const businessEmail = shopkeeper.businessEmail || shopkeeper.email;
 
       await this.mailService.sendOTPEmail({
@@ -107,7 +134,7 @@ export class ShopkeepersService {
         message: "OTP sent successfully to your registered business email",
         data: {
           email: normalizedEmail,
-          businessEmail: businessEmail,
+          businessEmail,
           expiresIn: 10,
         },
       };
@@ -123,10 +150,14 @@ export class ShopkeepersService {
       const normalizedEmail = this.normalizeEmail(email);
       console.log(`Verifying OTP for: ${normalizedEmail}`);
 
-      // Find OTP document with role filter
+      const channel = "business_email";
+      const role = "shopkeeper";
+      const identifier = normalizedEmail;
+
       const otpDoc = await this.otpModel.findOne({
-        email: normalizedEmail,
-        role: "shopkeeper", // Filter by role
+        channel,
+        role,
+        identifier,
         verified: false,
       });
 
@@ -137,7 +168,6 @@ export class ShopkeepersService {
         );
       }
 
-      // Check if expired
       if (new Date() > otpDoc.expiresAt) {
         console.log("OTP has expired");
         await this.otpModel.deleteOne({ _id: otpDoc._id });
@@ -146,7 +176,6 @@ export class ShopkeepersService {
         );
       }
 
-      // Check attempts
       if (otpDoc.attempts >= 3) {
         console.log("Too many attempts");
         await this.otpModel.deleteOne({ _id: otpDoc._id });
@@ -155,10 +184,8 @@ export class ShopkeepersService {
         );
       }
 
-      // Verify OTP
       if (otpDoc.otp !== otp) {
         console.log(`OTP mismatch. Expected: ${otpDoc.otp}, Received: ${otp}`);
-        // Increment attempts
         await this.otpModel.updateOne(
           { _id: otpDoc._id },
           { $inc: { attempts: 1 } }
@@ -170,7 +197,6 @@ export class ShopkeepersService {
 
       console.log("OTP verified successfully");
 
-      // Get shopkeeper details
       const shopkeeper = await this.shopModel.findOne({
         businessEmail: normalizedEmail,
         approved: true,
@@ -180,7 +206,6 @@ export class ShopkeepersService {
         throw new NotFoundException("Shopkeeper not found or not approved");
       }
 
-      // Generate JWT token
       const payload = {
         name: shopkeeper.name,
         email: shopkeeper.email,
@@ -193,7 +218,6 @@ export class ShopkeepersService {
         expiresIn: "24h",
       });
 
-      // Mark OTP as verified and delete
       await this.otpModel.deleteOne({ _id: otpDoc._id });
       console.log(`OTP deleted for ${normalizedEmail}`);
 
@@ -230,43 +254,46 @@ export class ShopkeepersService {
         throw new NotFoundException("Shopkeeper not found or not approved");
       }
 
-      // Check for recent OTP requests (prevent spam)
-      const recentOtp = await this.otpModel.findOne({
-        email: normalizedEmail,
-        role: "shopkeeper",
-        createdAt: { $gte: new Date(Date.now() - 60 * 1000) }, // Last 60 seconds
-      });
+      const channel = "business_email";
+      const role = "shopkeeper";
+      const identifier = normalizedEmail;
 
-      if (recentOtp) {
+      // Rate limit: last 60 seconds by lastSentAt (preferred over createdAt after upsert)
+      const existing = await this.otpModel.findOne({
+        channel,
+        role,
+        identifier,
+      });
+      if (
+        existing?.lastSentAt &&
+        Date.now() - new Date(existing.lastSentAt).getTime() < 60 * 1000
+      ) {
         throw new BadRequestException(
           "Please wait 60 seconds before requesting a new OTP"
         );
       }
 
-      // Delete any existing OTPs for this email and role
-      await this.otpModel.deleteMany({
-        email: normalizedEmail,
-        role: "shopkeeper",
-      });
-
-      // Generate new OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      // Create new OTP document
-      const otpDoc = new this.otpModel({
-        email: normalizedEmail,
-        role: "shopkeeper",
-        otp,
-        expiresAt,
-        attempts: 0,
-        verified: false,
-      });
+      await this.otpModel.findOneAndUpdate(
+        { channel, role, identifier },
+        {
+          email: normalizedEmail, // legacy
+          otp,
+          expiresAt,
+          attempts: 0,
+          verified: false,
+          lastSentAt: new Date(),
+          channel,
+          identifier,
+          role,
+        },
+        { upsert: true, new: true }
+      );
 
-      await otpDoc.save();
       console.log(`New OTP saved for ${normalizedEmail}: ${otp}`);
 
-      // Send OTP via email
       const businessEmail = shopkeeper.businessEmail || shopkeeper.email;
 
       await this.mailService.sendOTPEmail({
@@ -371,5 +398,62 @@ export class ShopkeepersService {
 
     delete shopkeeper.password;
     return { message: "Shopkeeper Found", data: shopkeeper };
+  }
+
+  async updateProfile(
+    id: string,
+    body: {
+      ownerName?: string;
+      shopName?: string;
+      email?: string;
+      businessEmail?: string;
+      whatsappNumber?: string;
+      phone?: string;
+      address?: string;
+      description?: string;
+      businessCategory?: string;
+      paymentURL?: string; // keep if you still send a string
+    },
+    paymentQrPublicUrl?: string | null
+  ) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException("Invalid shopkeeper id");
+    }
+
+    const update: Record<string, any> = {};
+
+    if (body.ownerName !== undefined) update.name = body.ownerName;
+    if (body.shopName !== undefined) update.shopName = body.shopName;
+    if (body.email !== undefined)
+      update.email = this.normalizeEmail(body.email);
+    if (body.businessEmail !== undefined)
+      update.businessEmail = this.normalizeEmail(body.businessEmail);
+    if (body.whatsappNumber !== undefined)
+      update.whatsappNumber = body.whatsappNumber;
+    if (body.phone !== undefined) update.phone = body.phone;
+    if (body.address !== undefined) update.address = body.address;
+    if (body.description !== undefined) update.description = body.description;
+    if (body.businessCategory !== undefined)
+      update.businessCategory = body.businessCategory;
+    if (body.paymentURL !== undefined) update.paymentURL = body.paymentURL;
+
+    // Persist uploaded QR public URL to document
+    if (paymentQrPublicUrl) {
+      update.paymentURL = paymentQrPublicUrl;
+    }
+
+    console.log(update, "update");
+
+    const updated = await this.shopModel
+      .findByIdAndUpdate(id, update, { new: true, runValidators: true })
+      .lean()
+      .exec();
+
+    if (!updated) {
+      throw new NotFoundException("Shopkeeper not found");
+    }
+
+    delete (updated as any).password;
+    return { message: "Profile updated", data: updated };
   }
 }

@@ -8,14 +8,16 @@ import {
   ConflictException,
   Body,
   Post,
+  Param,
+  BadRequestException,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { Request, Response } from "express";
 import { UsersService } from "./users.service";
-import { JwtService } from "@nestjs/jwt"; // You will need to inject this service
+import { JwtService } from "@nestjs/jwt";
 import { CreateUserDto } from "./dto/create-users.dto";
 
-@Controller("user")
+@Controller("users")
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
@@ -32,20 +34,16 @@ export class UsersController {
   @UseGuards(AuthGuard("google"))
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     try {
-      console.log("Claeeddddddddd");
       const userFromGoogle = req.user as any;
       if (!userFromGoogle) {
-        // Handle error...
         return res.redirect("https://eventsh.com/login?error=auth_failed");
       }
 
-      // 1. Check if the user already exists in your database
       let user = await this.usersService.findByProviderId(
         userFromGoogle.providerId,
         userFromGoogle.provider
       );
 
-      // 2. If the user doesn't exist, create a new one
       if (!user) {
         const createUserDto: CreateUserDto = {
           name: userFromGoogle.name,
@@ -57,30 +55,33 @@ export class UsersController {
         user = await this.usersService.create(createUserDto);
       }
 
-      // 3. Generate a JWT token
-      const payload = { email: user.email, sub: user._id, roles: user.roles }; // Customize payload as needed
+      const payload = { email: user.email, sub: user._id, roles: user.roles };
       const token = this.jwtService.sign(payload);
-
-      // 4. Redirect to the frontend with the token
       return res.redirect(`https://eventsh.com/user-dashboard?token=${token}`);
     } catch (error) {
-      // Handle error...
       return res.redirect("https://eventsh.com/login?error=auth_failed");
     }
   }
 
-  // New endpoint for general registration
+  @Get("verify/:email")
+  async verifyEmail(@Param("email") email: string) {
+    try {
+      return await this.usersService.findByEmail(email);
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
   @Post("register")
   async register(@Body() createUserDto: CreateUserDto) {
     try {
-      console.log(createUserDto, "createUserDto");
       const existingUser = await this.usersService.findByEmail(
         createUserDto.email
       );
       if (existingUser) {
         throw new ConflictException("User with this email already exists.");
       }
-
       return await this.usersService.create(createUserDto);
     } catch (error) {
       throw new InternalServerErrorException(
@@ -88,4 +89,81 @@ export class UsersController {
       );
     }
   }
+
+  /**
+   * NEW: Email verification for cart
+   */
+  @Post("verify-email-for-cart")
+  async verifyEmailForCart(@Body() body: { email: string }) {
+    try {
+      if (!body.email) {
+        throw new BadRequestException("Email is required");
+      }
+      return await this.usersService.verifyEmailForCart(body.email);
+    } catch (error) {
+      console.error("Email verification error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * NEW: Send WhatsApp OTP
+   */
+  @Post("send-whatsapp-otp")
+  async sendWhatsAppOtp(
+    @Body() body: { userId: string; whatsAppNumber: string }
+  ) {
+    try {
+      if (!body.userId || !body.whatsAppNumber) {
+        throw new BadRequestException("userId and whatsAppNumber are required");
+      }
+      return await this.usersService.sendWhatsAppOtp(
+        body.userId,
+        body.whatsAppNumber
+      );
+    } catch (error) {
+      console.error("WhatsApp OTP send error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * NEW: Verify WhatsApp OTP
+   */
+  @Post("verify-whatsapp-otp")
+  async verifyWhatsAppOtp(
+    @Body() body: { userId: string; whatsAppNumber: string; otp: string }
+  ) {
+    try {
+      if (!body.userId || !body.whatsAppNumber || !body.otp) {
+        throw new BadRequestException(
+          "userId, whatsAppNumber, and otp are required"
+        );
+      }
+      return await this.usersService.verifyWhatsAppOtp(
+        body.userId,
+        body.whatsAppNumber,
+        body.otp
+      );
+    } catch (error) {
+      console.error("WhatsApp OTP verification error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * NEW: Check WhatsApp verification status
+   */
+  // @Get("whatsapp-status/:userId")
+  // async checkWhatsAppStatus(@Param("userId") userId: string) {
+  //   try {
+  //     if (!userId) {
+  //       throw new BadRequestException("userId is required");
+  //     }
+  //     return await this.usersService.checkWhatsAppStatus(userId);
+  //   } catch (error) {
+  //     console.error("WhatsApp status check error:", error);
+  //     throw error;
+  //   }
+  // }
 }

@@ -82,8 +82,7 @@ export class ProductsController {
     }
   }
 
-  @Get()
-  @UseGuards(AuthGuard("jwt"))
+  @Get("get-all-products")
   findAll() {
     try {
       return this.productsService.findAll();
@@ -100,6 +99,16 @@ export class ProductsController {
       return this.productsService.getShopkeeperProducts(shopkeeperId);
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  @Get("shopkeeper-products/:id")
+  async findProductsbyId(@Param("id") id: string) {
+    try {
+      return await this.productsService.getShopkeeperProducts(id);
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
   }
 

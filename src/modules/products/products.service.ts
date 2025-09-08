@@ -59,8 +59,21 @@ export class ProductsService {
     }
   }
 
-  findAll() {
-    return `This action returns all products`;
+  async findAll() {
+    try {
+      const products = await this.productModel.find().populate({
+        path: "shopkeeperId",
+        select: "name shopName",
+      });
+      if (!products) {
+        throw new NotFoundException("No Products Found");
+      }
+
+      return { message: "Products Found", data: products };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async findOne(id: string) {

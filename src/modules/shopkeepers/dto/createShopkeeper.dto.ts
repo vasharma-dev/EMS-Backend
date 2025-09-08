@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsBoolean,
   IsOptional,
+  IsNumber,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -55,5 +56,22 @@ export class CreateShopkeeperDto {
   description?: string;
 
   @IsEmail()
+  @IsNotEmpty()
   businessEmail: string;
+
+  @IsString()
+  @IsNotEmpty()
+  whatsappNumber: string;
+
+  @IsString()
+  @IsNotEmpty()
+  businessCategory: string;
+
+  @IsNumber()
+  @IsOptional()
+  followers?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentURL: string;
 }

@@ -25,6 +25,6 @@ import { MailModule } from "../roles/mail.module";
     // you might also want to include OtpService here if you inject it directly
   ],
   controllers: [ShopkeepersController],
-  exports: [ShopkeepersService],
+  exports: [ShopkeepersService, MongooseModule],
 })
 export class ShopkeepersModule {}

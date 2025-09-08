@@ -1,17 +1,24 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import { ShopkeepersService } from "./shopkeepers.service";
 import { LoginDto } from "../admin/dto/login.dto";
 import { CreateShopkeeperDto } from "./dto/createShopkeeper.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { diskStorage } from "multer";
+import { extname } from "path";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 // DTO for OTP requests
 class RequestOTPDto {
@@ -23,18 +30,36 @@ class VerifyOTPDto {
   otp: string;
 }
 
+function qrStorage() {
+  return diskStorage({
+    destination: (_req, _file, cb) => cb(null, "./uploads/shopkeeperPayment"),
+    filename: (req, file, cb) => {
+      // filename pattern: <shopkeeperId>-<timestamp>.<ext>
+      const id = req.params?.id || "unknown";
+      const ts = Date.now();
+      const ext = extname(file.originalname || "") || ".png";
+      cb(null, `${id}-${ts}${ext}`);
+    },
+  });
+}
+
 @Controller("shopkeepers")
 export class ShopkeepersController {
   constructor(private shopkeepersService: ShopkeepersService) {}
 
   @Post()
-  async create(@Body() body: any) {
+  async create(@Body() body: CreateShopkeeperDto) {
+    console.log(body, "Vansh Sharma");
     return this.shopkeepersService.create(body);
   }
 
-  @Get()
+  @Get("get-all-shopkeepers")
   async list() {
-    return this.shopkeepersService.list();
+    try {
+      return await this.shopkeepersService.list();
+    } catch (error) {
+      throw error;
+    }
   }
 
   @Get(":email")
@@ -90,8 +115,9 @@ export class ShopkeepersController {
   @UseGuards(AuthGuard("jwt"))
   async getProfile(@Req() req: any) {
     try {
-      const shopkeeperId = req.user.userId;
-      return await this.shopkeepersService.getProfile(shopkeeperId);
+      console.log(req.user.userId, "Vansh Sharmasuodvuisdbvhsdbv");
+      const shopkeeperId = req.user.sub;
+      return await this.shopkeepersService.get(shopkeeperId);
     } catch (error) {
       throw error;
     }
@@ -100,9 +126,50 @@ export class ShopkeepersController {
   @Post("register")
   async register(@Body() body: CreateShopkeeperDto) {
     try {
+      console.log(body, "Vansh Sharma");
       return await this.shopkeepersService.register(body);
     } catch (error) {
       throw error;
     }
+  }
+
+  @Get("Shopkeeper-detail/:id")
+  async getShopkeeperDetail(@Param("id") id: string) {
+    try {
+      console.log(id, "Vansh Sharmasuodvuisdbvhsdbv");
+      return await this.shopkeepersService.get(id);
+    } catch (error) {}
+  }
+
+  @Patch("profile/:id")
+  @UseInterceptors(
+    FileInterceptor("paymentURL", {
+      storage: qrStorage(),
+      fileFilter: (_req, file, cb) => {
+        if (!file.mimetype.startsWith("image/")) {
+          return cb(
+            new BadRequestException("Only image files are allowed"),
+            false
+          );
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 5 * 1024 * 1024 },
+    })
+  )
+  async updateProfile(
+    @Param("id") id: string,
+    @UploadedFile() paymentURL: Express.Multer.File,
+    @Body() body: any // or UpdateShopkeeperDto if you bind DTO validation
+  ) {
+    // Construct public URL if a file was uploaded.
+    // main.ts serves /uploads, so this becomes accessible at http://localhost:3000/uploads/...
+    const paymentQrPublicUrl = paymentURL?.filename
+      ? `/uploads/shopkeeperPayment/${paymentURL.filename}`
+      : null;
+
+    console.log(paymentQrPublicUrl, "Vansh Sharma");
+
+    return this.shopkeepersService.updateProfile(id, body, paymentQrPublicUrl);
   }
 }

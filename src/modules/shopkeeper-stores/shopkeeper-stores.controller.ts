@@ -78,6 +78,26 @@ export class ShopkeeperStoresController {
     }
   }
 
+  @Get("shopkeeper-store-detail/:id")
+  async findById(@Param("id") id: string) {
+    try {
+      return await this.shopkeeperStoresService.findOneByShopkeeperId(id);
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  @Get("shopkeeper-stores-detail/:shopName")
+  findOneById(@Param("shopName") shopName: string) {
+    try {
+      console.log(shopName);
+      return this.shopkeeperStoresService.findBySlug(shopName);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @Patch("update-store-settings")
   @UseGuards(AuthGuard("jwt"))
   @UseInterceptors(
@@ -127,7 +147,7 @@ export class ShopkeeperStoresController {
         const host = req.get("host");
 
         // Construct the full URL
-        bannerImagePath = `${protocol}://${host}/uploads/banners/${bannerFile.filename}`;
+        bannerImagePath = `/uploads/banners/${bannerFile.filename}`;
 
         console.log("Full banner image URL:", bannerImagePath);
       }

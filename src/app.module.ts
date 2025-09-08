@@ -13,6 +13,8 @@ import { MailModule } from "./modules/roles/mail.module";
 import { ProductsModule } from "./modules/products/products.module";
 import { OtpModule } from "./modules/otp/otp.module";
 import { ShopkeeperStoresModule } from "./modules/shopkeeper-stores/shopkeeper-stores.module";
+import { OrdersModule } from "./modules/orders/orders.module";
+import { PaymentsModule } from "./modules/payments/payments.module";
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { ShopkeeperStoresModule } from "./modules/shopkeeper-stores/shopkeeper-s
     AdminModule,
     RolesModule,
     ProductsModule,
+    OrdersModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

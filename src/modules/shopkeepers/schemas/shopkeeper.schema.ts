@@ -35,11 +35,23 @@ export class Shopkeeper {
     { open: string; close: string; closed: boolean }
   >;
 
+  @Prop({ required: true })
+  whatsappNumber: string;
+
   @Prop({ default: false })
   approved: boolean;
 
+  @Prop()
+  paymentURL: string;
+
   @Prop({ default: false })
   rejected: boolean;
+
+  @Prop()
+  businessCategory: string;
+
+  @Prop({ default: 0 })
+  followers: number;
 
   @Prop()
   updatedAt?: Date;
