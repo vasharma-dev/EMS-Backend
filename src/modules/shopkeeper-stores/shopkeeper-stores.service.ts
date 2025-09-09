@@ -17,6 +17,7 @@ export class ShopkeeperStoresService {
     try {
       const shopfrontStore = new this.shopkeeperStoreModel({
         shopkeeperId: createShopkeeperStoreDto.shopkeeperId,
+        slug: createShopkeeperStoreDto.slug,
         settings: {
           general: {
             storeName: createShopkeeperStoreDto.general.storeName,
@@ -98,7 +99,10 @@ export class ShopkeeperStoresService {
   async findBySlug(slug: string) {
     try {
       // Try to find by slug first
-      let store = await this.shopkeeperStoreModel.findOne({ slug }).exec();
+      console.log(slug);
+      let store = await this.shopkeeperStoreModel
+        .findOne({ slug: slug })
+        .exec();
 
       console.log(store, "Store");
       if (store) {
@@ -146,6 +150,7 @@ export class ShopkeeperStoresService {
       if (!shopfrontStore) {
         return { message: "Shopfront store not found", data: null };
       }
+      console.log(shopfrontStore, "Hello");
       return { message: "Shopfront store found", data: shopfrontStore };
     } catch (error) {
       console.error("Error finding shopfront store by shopkeeperId:", error);
@@ -155,7 +160,7 @@ export class ShopkeeperStoresService {
 
   async update(
     shopkeeperId: string,
-    updateShopkeeperStoreDto: UpdateShopkeeperStoreDto,
+    updateShopkeeperDto: UpdateShopkeeperStoreDto,
     bannerImagePath?: string
   ) {
     try {
@@ -172,117 +177,121 @@ export class ShopkeeperStoresService {
 
       const updateData: any = {};
 
+      // Update slug if provided
+      if (typeof updateShopkeeperDto.slug === "string") {
+        updateData.slug = updateShopkeeperDto.slug.toLowerCase();
+      }
+
       // Update general settings if provided
-      if (updateShopkeeperStoreDto.general) {
+      if (updateShopkeeperDto.general) {
         updateData["settings.general"] = {
           storeName:
-            updateShopkeeperStoreDto.general.storeName ??
+            updateShopkeeperDto.general.storeName ??
             existingStore.settings.general.storeName,
           tagline:
-            updateShopkeeperStoreDto.general.tagline ??
+            updateShopkeeperDto.general.tagline ??
             existingStore.settings.general.tagline,
           description:
-            updateShopkeeperStoreDto.general.description ??
+            updateShopkeeperDto.general.description ??
             existingStore.settings.general.description,
           logo:
-            updateShopkeeperStoreDto.general.logo ??
+            updateShopkeeperDto.general.logo ??
             existingStore.settings.general.logo,
           favicon:
-            updateShopkeeperStoreDto.general.favicon ??
+            updateShopkeeperDto.general.favicon ??
             existingStore.settings.general.favicon,
           contactInfo: {
             phone:
-              updateShopkeeperStoreDto.general.contactInfo?.phone ??
+              updateShopkeeperDto.general.contactInfo?.phone ??
               existingStore.settings.general.contactInfo.phone,
             email:
-              updateShopkeeperStoreDto.general.contactInfo?.email ??
+              updateShopkeeperDto.general.contactInfo?.email ??
               existingStore.settings.general.contactInfo.email,
             address:
-              updateShopkeeperStoreDto.general.contactInfo?.address ??
+              updateShopkeeperDto.general.contactInfo?.address ??
               existingStore.settings.general.contactInfo.address,
             hours:
-              updateShopkeeperStoreDto.general.contactInfo?.hours ??
+              updateShopkeeperDto.general.contactInfo?.hours ??
               existingStore.settings.general.contactInfo.hours,
             website:
-              updateShopkeeperStoreDto.general.contactInfo?.website ??
+              updateShopkeeperDto.general.contactInfo?.website ??
               existingStore.settings.general.contactInfo.website,
           },
         };
       }
 
       // Update design settings if provided
-      if (updateShopkeeperStoreDto.design) {
+      if (updateShopkeeperDto.design) {
         updateData["settings.design"] = {
           theme:
-            updateShopkeeperStoreDto.design.theme ??
+            updateShopkeeperDto.design.theme ??
             existingStore.settings.design.theme,
           primaryColor:
-            updateShopkeeperStoreDto.design.primaryColor ??
+            updateShopkeeperDto.design.primaryColor ??
             existingStore.settings.design.primaryColor,
           secondaryColor:
-            updateShopkeeperStoreDto.design.secondaryColor ??
+            updateShopkeeperDto.design.secondaryColor ??
             existingStore.settings.design.secondaryColor,
           fontFamily:
-            updateShopkeeperStoreDto.design.fontFamily ??
+            updateShopkeeperDto.design.fontFamily ??
             existingStore.settings.design.fontFamily,
           layout:
-            updateShopkeeperStoreDto.design.layout ??
+            updateShopkeeperDto.design.layout ??
             existingStore.settings.design.layout,
-          // Use the uploaded banner path if provided, otherwise use existing or new value from DTO
           bannerImage:
             bannerImagePath ??
-            updateShopkeeperStoreDto.design.bannerImage ??
+            updateShopkeeperDto.design.bannerImage ??
             existingStore.settings.design.bannerImage,
           showBanner:
-            updateShopkeeperStoreDto.design.showBanner ??
+            updateShopkeeperDto.design.showBanner ??
             existingStore.settings.design.showBanner,
           bannerHeight:
-            updateShopkeeperStoreDto.design.bannerHeight ??
+            updateShopkeeperDto.design.bannerHeight ??
             existingStore.settings.design.bannerHeight,
         };
       }
 
       // Update features settings if provided
-      if (updateShopkeeperStoreDto.features) {
+      if (updateShopkeeperDto.features) {
         updateData["settings.features"] = {
           showSearch:
-            updateShopkeeperStoreDto.features.showSearch ??
+            updateShopkeeperDto.features.showSearch ??
             existingStore.settings.features.showSearch,
           showFilters:
-            updateShopkeeperStoreDto.features.showFilters ??
+            updateShopkeeperDto.features.showFilters ??
             existingStore.settings.features.showFilters,
           showReviews:
-            updateShopkeeperStoreDto.features.showReviews ??
+            updateShopkeeperDto.features.showReviews ??
             existingStore.settings.features.showReviews,
           showWishlist:
-            updateShopkeeperStoreDto.features.showWishlist ??
+            updateShopkeeperDto.features.showWishlist ??
             existingStore.settings.features.showWishlist,
           showSocialMedia:
-            updateShopkeeperStoreDto.features.showSocialMedia ??
+            updateShopkeeperDto.features.showSocialMedia ??
             existingStore.settings.features.showSocialMedia,
           enableChat:
-            updateShopkeeperStoreDto.features.enableChat ??
+            updateShopkeeperDto.features.enableChat ??
             existingStore.settings.features.enableChat,
           showNewsletter:
-            updateShopkeeperStoreDto.features.showNewsletter ??
+            updateShopkeeperDto.features.showNewsletter ??
             existingStore.settings.features.showNewsletter,
         };
       }
 
       // Update SEO settings if provided
-      if (updateShopkeeperStoreDto.seo) {
+      if (updateShopkeeperDto.seo) {
         updateData["settings.seo"] = {
           metaTitle:
-            updateShopkeeperStoreDto.seo.metaTitle ??
+            updateShopkeeperDto.seo.metaTitle ??
             existingStore.settings.seo.metaTitle,
           metaDescription:
-            updateShopkeeperStoreDto.seo.metaDescription ??
+            updateShopkeeperDto.seo.metaDescription ??
             existingStore.settings.seo.metaDescription,
           keywords:
-            updateShopkeeperStoreDto.seo.keywords ??
+            updateShopkeeperDto.seo.keywords ??
             existingStore.settings.seo.keywords,
           customCode:
-            updateShopkeeperStoreDto.seo.customCode ??
+            updateShopkeeperDto.seo.customCode ??
             existingStore.settings.seo.customCode,
         };
       }
@@ -296,14 +305,12 @@ export class ShopkeeperStoresService {
         )
         .exec();
 
-      console.log(updatedStore, "updated store");
-
       return {
-        message: "Shopfront settings updated successfully",
+        message: "Shopfront store updated successfully",
         data: updatedStore,
       };
     } catch (error) {
-      console.error("Error updating shopfront settings:", error);
+      console.error("Error updating shopfront store:", error);
       throw error;
     }
   }

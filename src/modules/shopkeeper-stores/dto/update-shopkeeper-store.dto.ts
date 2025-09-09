@@ -20,6 +20,9 @@ export class UpdateShopkeeperStoreDto {
   };
 
   @IsOptional()
+  slug: string;
+
+  @IsOptional()
   design?: {
     theme?: string;
     primaryColor?: string;

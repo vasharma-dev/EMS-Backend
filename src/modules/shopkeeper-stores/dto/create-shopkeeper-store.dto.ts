@@ -59,6 +59,9 @@ export class CreateShopkeeperStoreDto {
   @IsString()
   shopkeeperId: string;
 
+  @IsString()
+  slug: string;
+
   @IsObject()
   @ValidateNested()
   @Type(() => GeneralSettingsDto)
