@@ -272,71 +272,93 @@ export class MailService {
   /**
    * Send status update email for orders
    */
-  async sendOrderStatusEmail(data: {
-    name: string;
-    email: string;
-    orderId: string;
-    accepted: boolean;
-    status: string;
-    amount: string;
-    shopkeeperName: string;
-    date: string;
-  }) {
-    const statusColor = data.accepted ? "#22c55e" : "#ef4444";
-    const statusIcon = data.accepted ? "✅" : "❌";
-    const subject = data.accepted
-      ? "✅ Order Confirmed - Payment Accepted"
-      : "❌ Order Rejected - Payment Declined";
+  // Add the text property to your sendMail options in the sendOrderStatusEmail function
+  async sendOrderStatusEmail(
+    name: string,
+    email: string,
+    orderId: string,
+    accepted: boolean,
+    status: string,
+    amount: number,
+    shopkeeperName: string
+  ) {
+    const statusColor = accepted ? "#22c55e" : "#ef4444";
+    const subject = accepted
+      ? `Order ${orderId} Confirmed`
+      : `Order ${orderId} Update`;
+
+    // Plain text version for better deliverability
+    const text = `
+    Hello ${name},
+
+    Your order status has been updated.
+
+    Order Information:
+    - Order ID: ${orderId}
+    - Status: ${status}
+    - Amount: ₹${amount}
+    - Merchant: ${shopkeeperName}
+
+    ${
+      accepted
+        ? `Great news! Your payment has been confirmed by the merchant. Your order is now being processed.`
+        : `Order Rejected: Your payment was not accepted by the merchant.`
+    }
+    
+    Thank you for your order!
+
+    Regards,
+    EventSH Team
+    `;
 
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Order ${data.accepted ? "Confirmed" : "Rejected"}</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Order ${accepted ? "Confirmed" : "Rejected"}</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f4f4f4;">
-          <div style="max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-              <div style="text-align: center; margin-bottom: 30px;">
-                  <h1 style="color: ${statusColor}; margin: 0;">${statusIcon} Order ${data.accepted ? "Confirmed" : "Rejected"}</h1>
-                  <p style="color: #666; margin: 10px 0;">Your order status has been updated</p>
-              </div>
-              <h2 style="color: #333;">Hello ${data.name},</h2>
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColor}; margin: 20px 0;">
-                  <h3 style="margin-top: 0; color: #333;">📋 Order Information</h3>
-                  <table style="width: 100%; border-collapse: collapse;">
-                      <tr><td style="padding: 8px 0; font-weight: bold;">Order ID:</td><td style="padding: 8px 0;">${data.orderId}</td></tr>
-                      <tr><td style="padding: 8px 0; font-weight: bold;">Status:</td><td style="padding: 8px 0; color: ${statusColor}; font-weight: bold;">${data.status}</td></tr>
-                      <tr><td style="padding: 8px 0; font-weight: bold;">Amount:</td><td style="padding: 8px 0;">₹${data.amount}</td></tr>
-                      <tr><td style="padding: 8px 0; font-weight: bold;">Merchant:</td><td style="padding: 8px 0;">${data.shopkeeperName}</td></tr>
-                      <tr><td style="padding: 8px 0; font-weight: bold;">Updated:</td><td style="padding: 8px 0;">${data.date}</td></tr>
-                  </table>
-              </div>
-              <div style="margin: 30px 0;">
-                  ${
-                    data.accepted
-                      ? `<p style="color: #22c55e; font-size: 16px;"><strong>✅ Great news!</strong> Your payment has been confirmed by the merchant. Your order is now being processed.</p>
-                         <p>We'll keep you updated on the progress. Thank you for your order!</p>`
-                      : `<p style="color: #ef4444; font-size: 16px;"><strong>❌ Order Rejected</strong> Your payment was not accepted by the merchant.</p>
-                         <p>Please contact the merchant for more details or try placing a new order.</p>`
-                  }
-              </div>
-              <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <h4 style="margin-top: 0; color: #1976d2;">💬 Need Help?</h4>
-                  <p style="margin: 0;">Contact the merchant directly for any questions about your order.</p>
-                  <p style="margin: 5px 0 0 0;"><strong>Merchant:</strong> ${data.shopkeeperName}</p>
-              </div>
-              <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;">
-                  <p style="color: #666; font-size: 14px;">Thank you for using our platform!</p>
-                  <p style="color: #888; font-size: 12px;">This is an automated message, please do not reply to this email.</p>
-              </div>
+        <div style="max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: ${statusColor}; margin: 0;">Order ${accepted ? "Confirmed" : "Rejected"}</h1>
+            <p style="color: #666; margin: 10px 0;">Your order status has been updated.</p>
           </div>
+          <h2 style="color: #333;">Hello ${name},</h2>
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColor}; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">📋 Order Information</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; font-weight: bold;">Order ID:</td><td style="padding: 8px 0;">${orderId}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Status:</td><td style="padding: 8px 0; color: ${statusColor}; font-weight: bold;">${status}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Amount:</td><td style="padding: 8px 0;">₹${amount}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Merchant:</td><td style="padding: 8px 0;">${shopkeeperName}</td></tr>
+            </table>
+          </div>
+          <div style="margin: 30px 0;">
+            ${
+              accepted
+                ? `<p style="color: #22c55e; font-size: 16px;"><strong>Great news!</strong> Your payment has been confirmed by the merchant. Your order is now being processed.</p>
+                   <p>We'll keep you updated on the progress. Thank you for your order!</p>`
+                : `<p style="color: #ef4444; font-size: 16px;"><strong>Order Rejected</strong> Your payment was not accepted by the merchant.</p>
+                   <p>Please contact the merchant for more details or try placing a new order.</p>`
+            }
+          </div>
+          <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h4 style="margin-top: 0; color: #1976d2;">Need Help?</h4>
+            <p style="margin: 0;">Contact the merchant directly for any questions about your order.</p>
+            <p style="margin: 5px 0 0 0;"><strong>Merchant:</strong> ${shopkeeperName}</p>
+          </div>
+          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 14px;">Thank you for using our platform!</p>
+            <p style="color: #888; font-size: 12px;">This is an automated message, please do not reply to this email.</p>
+          </div>
+        </div>
       </body>
       </html>`;
 
     await this.sendMail({
-      to: data.email,
+      to: email,
       subject,
       html,
     });

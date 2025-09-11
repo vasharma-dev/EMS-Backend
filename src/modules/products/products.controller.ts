@@ -153,16 +153,20 @@ export class ProductsController {
     @Req() req: any
   ) {
     try {
+      // Parse the DTO sent from the frontend
       const updateProductDto = JSON.parse(productJson);
 
+      // Get the existing images array sent from the frontend (which might be empty or reordered)
+      // This array is the source of truth for images the user wants to keep.
+      const existingImages = updateProductDto.images || [];
+
       // Map uploaded file paths
-      const imagePaths = files.map(
+      const newImagePaths = files.map(
         (file) => `/uploads/products/${file.filename}`
       );
-      if (imagePaths.length > 0) {
-        // You may choose: Replace all images or merge with existing (see below)
-        updateProductDto.images = imagePaths;
-      }
+
+      // Combine the existing images (kept from the frontend) with the new images
+      updateProductDto.images = [...existingImages, ...newImagePaths];
 
       return this.productsService.update(id, updateProductDto);
     } catch (error) {

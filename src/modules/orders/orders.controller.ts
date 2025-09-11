@@ -54,32 +54,14 @@ export class OrdersController {
   }
 
   @Patch(":orderId/status")
-  async confirmOrder(
+  async updateOrderStatus(
     @Param("orderId") orderId: string,
     @Body() updateDTO: UpdateOrderDto
   ) {
     try {
-      // If order is for delivery, confirm => Processing; if pickup, confirm => Ready
-      const order = await this.ordersService.getOrderById(orderId);
-      console.log(order, "Order");
-      if (!order) throw new BadRequestException("Order not found");
-      console.log(updateDTO.status, "status");
-
       return await this.ordersService.updateOrderStatus(
         orderId,
         updateDTO.status
-      );
-    } catch (err) {
-      throw new BadRequestException(err.message);
-    }
-  }
-
-  @Patch(":orderId/reject")
-  async rejectOrder(@Param("orderId") orderId: string) {
-    try {
-      return await this.ordersService.updateOrderStatus(
-        orderId,
-        OrderStatus.Cancelled
       );
     } catch (err) {
       throw new BadRequestException(err.message);

@@ -136,7 +136,7 @@ export class ShopkeepersController {
   @Get("Shopkeeper-detail/:id")
   async getShopkeeperDetail(@Param("id") id: string) {
     try {
-      console.log(id, "Vansh Sharmasuodvuisdbvhsdbv");
+      console.log(id, "Vansh ");
       return await this.shopkeepersService.get(id);
     } catch (error) {}
   }
