@@ -27,7 +27,6 @@ export class AdminController {
       // const creatorId = req.user.sub; // sub from JWT payload
       return this.adminService.create(createAdminDto);
     } catch (error) {
-      console.log(error);
       throw error;
     }
   }
@@ -48,7 +47,6 @@ export class AdminController {
     try {
       return this.adminService.getDashboardData();
     } catch (error) {
-      console.log(error);
       throw error;
     }
   }
@@ -57,12 +55,11 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   approveApplicant(
     @Param("id") id: string,
-    @Body("role") role: "Organizer" | "Shopkeeper"
+    @Body("role") role: "Organizer" | "Shopkeeper",
   ) {
     try {
       return this.adminService.approveApplicant(id, role);
     } catch (error) {
-      console.log(error);
       throw error;
     }
   }
@@ -72,12 +69,11 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   rejectApplicant(
     @Param("id") id: string,
-    @Body("role") role: "Organizer" | "Shopkeeper"
+    @Body("role") role: "Organizer" | "Shopkeeper",
   ) {
     try {
       return this.adminService.rejectApplicant(id, role);
     } catch (error) {
-      console.log(error);
       throw error;
     }
   }

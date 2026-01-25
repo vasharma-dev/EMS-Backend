@@ -30,7 +30,7 @@ async function bootstrap() {
         callback(null, true);
       } else {
         callback(
-          new Error(`CORS policy: The origin '${origin}' is not allowed.`)
+          new Error(`CORS policy: The origin '${origin}' is not allowed.`),
         );
       }
     },
@@ -44,7 +44,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Server running at http://localhost:${port}`);
 }
 
 bootstrap();

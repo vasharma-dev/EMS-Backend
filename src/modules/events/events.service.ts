@@ -8,13 +8,11 @@ import { UpdateEventDto } from "./dto/updateEvent.dto";
 @Injectable()
 export class EventsService {
   constructor(
-    @InjectModel(Event.name) private eventModel: Model<EventDocument>
+    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
   ) {}
 
   async create(createEventDto: CreateEventDto): Promise<Event> {
     try {
-      console.log("Creating event with data:", createEventDto);
-
       const startDate = new Date(createEventDto.startDate);
       const endDate = createEventDto.endDate
         ? new Date(createEventDto.endDate)
@@ -134,7 +132,7 @@ export class EventsService {
   }
 
   async findByOrganizer(
-    organizerId: string
+    organizerId: string,
   ): Promise<{ events: Event[]; total: number }> {
     try {
       const [events, total] = await Promise.all([

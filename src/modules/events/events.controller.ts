@@ -61,14 +61,14 @@ export class EventsController {
         }),
         fileFilter: imageFilter,
         limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
-      }
-    )
+      },
+    ),
   )
   async createEvent(
     @UploadedFiles()
     files: { banner?: Express.Multer.File[]; gallery?: Express.Multer.File[] },
     @Body() body: any,
-    @Req() req: any
+    @Req() req: any,
   ) {
     try {
       // Extract organizer ID from JWT token
@@ -97,18 +97,9 @@ export class EventsController {
       // Handle gallery images
       if (files.gallery && files.gallery.length > 0) {
         body.gallery = files.gallery.map(
-          (file) => `/uploads/events/${file.filename}`
+          (file) => `/uploads/events/${file.filename}`,
         );
       }
-
-      console.log("Creating event with processed data:", {
-        title: body.title,
-        organizerId: body.organizerId,
-        hasImage: !!body.image,
-        galleryCount: body.gallery?.length || 0,
-        tableTemplatesCount: body.tableTemplates?.length || 0,
-        venueTablesCount: body.venueTables?.length || 0,
-      });
 
       const event = await this.eventsService.create(body);
 
@@ -201,15 +192,15 @@ export class EventsController {
         }),
         fileFilter: imageFilter,
         limits: { fileSize: 5 * 1024 * 1024 },
-      }
-    )
+      },
+    ),
   )
   async updateEvent(
     @Param("id") id: string,
     @UploadedFiles()
     files: { banner?: Express.Multer.File[]; gallery?: Express.Multer.File[] },
     @Body() body: any,
-    @Req() req: any
+    @Req() req: any,
   ) {
     try {
       // Parse JSON strings from FormData
@@ -235,15 +226,9 @@ export class EventsController {
       // Handle new gallery images
       if (files.gallery && files.gallery.length > 0) {
         body.gallery = files.gallery.map(
-          (file) => `/uploads/events/${file.filename}`
+          (file) => `/uploads/events/${file.filename}`,
         );
       }
-
-      console.log("Updating event:", id, "with data:", {
-        title: body.title,
-        hasNewImage: !!files.banner,
-        newGalleryCount: files.gallery?.length || 0,
-      });
 
       const event = await this.eventsService.update(id, body);
 
@@ -262,7 +247,7 @@ export class EventsController {
   @UseGuards(AuthGuard("jwt"))
   async updateEventStatus(
     @Param("id") id: string,
-    @Body("status") status: string
+    @Body("status") status: string,
   ) {
     try {
       const event = await this.eventsService.updateStatus(id, status);

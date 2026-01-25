@@ -27,7 +27,7 @@ export class AuthController {
     private authService: AuthService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly rolesService: RoleService
+    private readonly rolesService: RoleService,
   ) {}
 
   @Post("login")
@@ -45,7 +45,7 @@ export class AuthController {
     } catch (error) {
       console.error("Registration error:", error);
       throw new InternalServerErrorException(
-        "An error occurred during registration."
+        "An error occurred during registration.",
       );
     }
   }
@@ -53,7 +53,6 @@ export class AuthController {
   @Get("google")
   @UseGuards(AuthGuard("google"))
   async googleAuth() {
-    console.log("::::Vansh Sharma");
     // This is the initial endpoint to start the Google auth flow.
   }
 
@@ -112,7 +111,6 @@ export class AuthController {
   @Get("google-shopkeeper")
   @UseGuards(AuthGuard("google-shopkeeper"))
   async googleShopkeeperAuth() {
-    console.log("::::Vansh Sharma");
     // This is the initial endpoint to start the Google auth flow.
   }
 
@@ -162,10 +160,10 @@ export class AuthController {
       // Frontend useEffect will detect token in URL params and call check-role API
       return res.redirect(
         `https://eventsh.com/eshop-login?token=${encodeURIComponent(
-          token
+          token,
         )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
-          user.name
-        )}`
+          user.name,
+        )}`,
       );
       // return res.redirect(
       //   `http://localhost:8080/eshop-login?token=${encodeURIComponent(
@@ -186,7 +184,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async checkRoleFromAuth(
     @Req() req: any,
-    @Body() body: { role: "organizer" | "shopkeeper" }
+    @Body() body: { role: "organizer" | "shopkeeper" },
   ) {
     try {
       const email = req.user.email;

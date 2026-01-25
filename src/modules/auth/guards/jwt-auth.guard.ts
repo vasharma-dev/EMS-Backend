@@ -15,10 +15,8 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
-    console.log(token, "token");
 
     if (!token) {
-      console.log("Calllleddlldldld");
       throw new UnauthorizedException("No token found");
     }
 
@@ -28,14 +26,11 @@ export class JwtAuthGuard implements CanActivate {
         secret: process.env.JWT_ACCESS_SECRET || "secret", // Use your secret here
       });
 
-      console.log(payload, "payload");
-
       // Attach user info (payload) to request for further use in controllers
       request.user = payload;
 
       return true; // Allow request to proceed
     } catch (err) {
-      console.log(err, "err");
       throw new UnauthorizedException("Invalid or expired token");
     }
   }
