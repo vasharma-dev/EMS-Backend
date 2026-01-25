@@ -43,11 +43,16 @@ export interface StorefrontSettings {
       adBarTextColor: string;
       visibleQuickPicks: boolean;
       featuredProducts: string;
+      visibleAboutUs: boolean;
+      visibleContactUs: boolean;
+      aboutUsHeading: string;
+      aboutUsText: string;
       quickPicks: string;
       banner: string;
       footer: string;
     };
     heroBannerImage?: string;
+    aboutUsImage?: string;
     bannerImage?: string;
     showBanner: boolean;
     bannerHeight: string;
@@ -120,19 +125,23 @@ export class OrganizerStore {
         secondaryColor: "#8b5cf6",
         fontFamily: "Inter",
         layout: {
-          header: "modern",
-          allProducts: "single",
-          visibleFeaturedProducts: false,
-          visibleAdvertismentBar: false,
-          visibleStatisticsSection: true,
-          advertismentBar: "modern",
-          advertiseText: "Welcome to Advertisement Bar",
-          visibleQuickPicks: false,
-          featuredProducts: "modern",
-          quickPicks: "modern",
-          banner: "modern",
-          footer: "modern",
-        },
+        header: "modern",
+        allProducts: "modern",
+        visibleAdvertismentBar: true,
+        advertiseText: "Flat 10% Off",
+        visibleStatisticsSection: true,
+        visibleFeaturedProducts: true,
+        adBarBgcolor: "#000000",
+        adBarTextColor: "#ffffff",
+        visibleQuickPicks: true,
+        visibleAboutUs: true,
+        visibleContactUs: true,
+        aboutUsHeading: "A Passion for Creating Memorable Experiences",
+        aboutUsText: "Creating unforgettable experiences through exceptional events.",       featuredProducts: "modern",
+        quickPicks: "modern",
+        banner: "modern",
+        footer: "modern",
+      },
         bannerImage: "",
         showBanner: true,
         bannerHeight: "large",

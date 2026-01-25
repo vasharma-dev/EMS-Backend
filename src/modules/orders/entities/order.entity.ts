@@ -59,6 +59,9 @@ export class Order extends Document {
 
   @Prop({ default: Date.now })
   updatedAt: Date;
+
+  @Prop()
+  couponCode?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

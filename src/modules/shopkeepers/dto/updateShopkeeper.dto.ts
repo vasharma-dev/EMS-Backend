@@ -88,6 +88,35 @@ export class UpdateShopkeeperDto {
   @IsOptional()
   UENNumber?: string;
 
+  @IsString()
+  @IsOptional()
+  taxPercentage?: number;
+
+  @IsString()
+  @IsOptional()
+  discountPercentage?: number;
+
+  @IsString()
+  @IsOptional()
+  whatsAppQRNumber?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  instagramQR?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  whatsAppQR?: boolean;
+
+  @IsOptional()
+  @IsString()
+  instagramHandle?: string;
+
+  // ✅ NEW: Document Verification Status
+  @IsBoolean()
+  @IsOptional()
+  dynamicQR?: boolean;
+
   // ✅ NEW: Document Verification Status
   @IsBoolean()
   @IsOptional()

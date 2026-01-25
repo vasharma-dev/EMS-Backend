@@ -8,6 +8,7 @@ import {
   ValidateNested,
   IsDateString,
   IsObject,
+  IsBoolean,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -67,6 +68,9 @@ class OrderItemDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @IsBoolean()
+  trackQuantity: boolean;
 }
 
 export class CreateOrderDto {
@@ -102,6 +106,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   pickupTime?: string;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
 
   @IsOptional()
   @IsEnum(OrderStatus)

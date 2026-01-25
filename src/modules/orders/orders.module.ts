@@ -13,6 +13,8 @@ import { MailModule } from "../roles/mail.module"; // Import MailModule providin
 import { ProductsModule } from "../products/products.module";
 import { ShopkeepersModule } from "../shopkeepers/shopkeepers.module";
 import { UsersModule } from "../users/users.module";
+import { CouponModule } from "../coupon/coupon.module";
+import { ShopkeeperStoresModule } from "../shopkeeper-stores/shopkeeper-stores.module";
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { UsersModule } from "../users/users.module";
     ]),
     MailModule, // Add MailModule here so MailService can be injected
     UsersModule,
+    CouponModule,
+    ShopkeeperStoresModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService], // Remove MailService here, provided by MailModule

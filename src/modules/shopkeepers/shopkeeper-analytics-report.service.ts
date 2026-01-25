@@ -32,7 +32,7 @@ export class ShopkeeperAnalyticsService {
     @InjectModel(Order.name) private orderModel: Model<Order>,
     @InjectModel(Product.name) private productModel: Model<Product>,
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Shopkeeper.name) private shopkeeperModel: Model<Shopkeeper>
+    @InjectModel(Shopkeeper.name) private shopkeeperModel: Model<Shopkeeper>,
   ) {}
 
   // ============= CURRENCY & DATE HELPERS =============
@@ -123,7 +123,7 @@ export class ShopkeeperAnalyticsService {
 
   async generateAnalyticsReport(
     shopkeeperId: string,
-    period: ReportPeriod = ReportPeriod.MONTHLY
+    period: ReportPeriod = ReportPeriod.MONTHLY,
   ): Promise<ShopkeeperAnalyticsReportDto> {
     try {
       const shopkeeper = await this.shopkeeperModel
@@ -156,20 +156,20 @@ export class ShopkeeperAnalyticsService {
       // Calculate basic metrics
       const totalRevenue = orders.reduce(
         (sum, o) => sum + (o.totalAmount || 0),
-        0
+        0,
       );
 
       const totalOrders = orders.length;
 
       const uniqueCustomers = new Set(
-        orders.map((o) => o.userId).filter(Boolean)
+        orders.map((o) => o.userId).filter(Boolean),
       );
 
       const totalCustomers = uniqueCustomers.size;
 
       const totalItems = orders.reduce(
         (sum, o) => sum + (o.items?.length || 0),
-        0
+        0,
       );
 
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -182,7 +182,7 @@ export class ShopkeeperAnalyticsService {
       const detailedOrders = this.buildDetailedOrders(orders);
       const { topProducts, bottomProducts } = await this.getProductPerformance(
         orders,
-        totalRevenue
+        totalRevenue,
       );
       const { topCustomers, inactiveCustomers } =
         this.getCustomerPerformance(orders);
@@ -192,15 +192,15 @@ export class ShopkeeperAnalyticsService {
 
       const orderTypeBreakdown = this.getOrderTypeBreakdown(
         orders,
-        totalRevenue
+        totalRevenue,
       );
       const orderStatusBreakdown = this.getOrderStatusBreakdown(
         orders,
-        totalRevenue
+        totalRevenue,
       );
       const categoryPerformance = this.getCategoryPerformance(
         orders,
-        totalRevenue
+        totalRevenue,
       );
 
       // ✅ SINGLE RETURN - Complete report object
@@ -249,6 +249,8 @@ export class ShopkeeperAnalyticsService {
         reportData.revenueTrend = this.getCurrentYearData(dailyData);
       } else if (period === "lastyear") {
         reportData.revenueTrend = this.getLastYearData(dailyData);
+      } else if (period === "lastquarter") {
+        reportData.revenueTrend = this.getLast3Months(dailyData);
       }
 
       // ✅ Return wrapper object (NOT part of DTO)
@@ -288,7 +290,7 @@ export class ShopkeeperAnalyticsService {
       }))
       .sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
   }
 
@@ -296,7 +298,7 @@ export class ShopkeeperAnalyticsService {
 
   private async getProductPerformance(
     orders: any[],
-    totalRevenue: number
+    totalRevenue: number,
   ): Promise<{
     topProducts: ProductPerformanceDto[];
     bottomProducts: ProductPerformanceDto[];
@@ -454,7 +456,7 @@ export class ShopkeeperAnalyticsService {
       existing.totalOrders += 1;
       existing.totalSpent += order.totalAmount || 0;
       existing.lastOrderDate = new Date(
-        Math.max(existing.lastOrderDate.getTime(), order.createdAt)
+        Math.max(existing.lastOrderDate.getTime(), order.createdAt),
       );
 
       customerMap.set(customerId, existing);
@@ -466,7 +468,7 @@ export class ShopkeeperAnalyticsService {
       .map((data) => {
         const daysSince = Math.floor(
           (endDate.getTime() - data.lastOrderDate.getTime()) /
-            (1000 * 3600 * 24)
+            (1000 * 3600 * 24),
         );
 
         return {
@@ -506,7 +508,7 @@ export class ShopkeeperAnalyticsService {
   private getRevenueTrend(
     orders: any[],
     start: Date,
-    end: Date
+    end: Date,
   ): RevenueTrendDto[] {
     const trendMap = new Map<string, { revenue: number; orders: number }>();
 
@@ -541,7 +543,7 @@ export class ShopkeeperAnalyticsService {
 
   private getOrderTypeBreakdown(
     orders: any[],
-    totalRevenue: number
+    totalRevenue: number,
   ): OrderTypeBreakdownDto[] {
     const typeMap = new Map<string, { count: number; revenue: number }>();
 
@@ -569,7 +571,7 @@ export class ShopkeeperAnalyticsService {
 
   private getOrderStatusBreakdown(
     orders: any[],
-    totalRevenue: number
+    totalRevenue: number,
   ): OrderStatusBreakdownDto[] {
     const statusMap = new Map<string, { count: number; revenue: number }>();
 
@@ -597,7 +599,7 @@ export class ShopkeeperAnalyticsService {
 
   private getCategoryPerformance(
     orders: any[],
-    totalRevenue: number
+    totalRevenue: number,
   ): CategoryPerformanceDto[] {
     const categoryMap = new Map<
       string,
@@ -658,13 +660,13 @@ export class ShopkeeperAnalyticsService {
       if (customerId) {
         customerOrderCount.set(
           customerId,
-          (customerOrderCount.get(customerId) || 0) + 1
+          (customerOrderCount.get(customerId) || 0) + 1,
         );
       }
     });
 
     const repeatCustomers = Array.from(customerOrderCount.values()).filter(
-      (count) => count > 1
+      (count) => count > 1,
     ).length;
 
     const totalCustomers = customerOrderCount.size;
@@ -677,7 +679,7 @@ export class ShopkeeperAnalyticsService {
   async getQuickSummary(shopkeeperId: string): Promise<QuickSummaryDto> {
     const report = await this.generateAnalyticsReport(
       shopkeeperId,
-      ReportPeriod.MONTHLY
+      ReportPeriod.MONTHLY,
     );
 
     return {
@@ -786,7 +788,7 @@ export class ShopkeeperAnalyticsService {
   async exportToExcel(
     shopkeeperId: string,
     period: ReportPeriod,
-    res: any
+    res: any,
   ): Promise<void> {
     const report = await this.generateAnalyticsReport(shopkeeperId, period);
     const workbook = new ExcelJS.Workbook();
@@ -799,11 +801,11 @@ export class ShopkeeperAnalyticsService {
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=Analytics-Report-${report.shopkeeperId}-${period}-${Date.now()}.xlsx`
+      `attachment; filename=Analytics-Report-${report.shopkeeperId}-${period}-${Date.now()}.xlsx`,
     );
 
     await workbook.xlsx.write(res);
@@ -812,7 +814,7 @@ export class ShopkeeperAnalyticsService {
 
   private createSummarySheet(
     workbook: ExcelJS.Workbook,
-    report: ShopkeeperAnalyticsReportDto
+    report: ShopkeeperAnalyticsReportDto,
   ) {
     const sheet = workbook.addWorksheet("Summary");
 
@@ -827,9 +829,9 @@ export class ShopkeeperAnalyticsService {
 
     sheet.getCell(`A${row}`).value = "Period:";
     sheet.getCell(`B${row}`).value = `${report.period.toUpperCase()} (${moment(
-      report.startDate
+      report.startDate,
     ).format("DD MMM YYYY")} - ${moment(report.endDate).format(
-      "DD MMM YYYY"
+      "DD MMM YYYY",
     )})`;
 
     row += 2;
@@ -869,7 +871,7 @@ export class ShopkeeperAnalyticsService {
 
   private createOrdersSheet(
     workbook: ExcelJS.Workbook,
-    report: ShopkeeperAnalyticsReportDto
+    report: ShopkeeperAnalyticsReportDto,
   ) {
     const sheet = workbook.addWorksheet("Orders");
 
@@ -927,7 +929,7 @@ export class ShopkeeperAnalyticsService {
 
   private createProductsSheet(
     workbook: ExcelJS.Workbook,
-    report: ShopkeeperAnalyticsReportDto
+    report: ShopkeeperAnalyticsReportDto,
   ) {
     const sheet = workbook.addWorksheet("Products");
 
@@ -983,7 +985,7 @@ export class ShopkeeperAnalyticsService {
 
   private createCustomersSheet(
     workbook: ExcelJS.Workbook,
-    report: ShopkeeperAnalyticsReportDto
+    report: ShopkeeperAnalyticsReportDto,
   ) {
     const sheet = workbook.addWorksheet("Customers");
 
@@ -1037,7 +1039,7 @@ export class ShopkeeperAnalyticsService {
 
   private createChartsDataSheet(
     workbook: ExcelJS.Workbook,
-    report: ShopkeeperAnalyticsReportDto
+    report: ShopkeeperAnalyticsReportDto,
   ) {
     // Revenue Trend Sheet
     const trendSheet = workbook.addWorksheet("Revenue Trend");

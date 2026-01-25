@@ -16,5 +16,6 @@ import { JwtService } from "@nestjs/jwt";
   ],
   controllers: [ShopkeeperStoresController],
   providers: [ShopkeeperStoresService, JwtService],
+  exports: [ShopkeeperStoresService, MongooseModule],
 })
 export class ShopkeeperStoresModule {}

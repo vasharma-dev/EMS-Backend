@@ -27,7 +27,7 @@ export class ShopkeepersService {
     @InjectModel(Shopkeeper.name) private shopModel: Model<ShopkeeperDocument>,
     @InjectModel(Otp.name) private otpModel: Model<Otp>, // Use your existing Otp model
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
   ) {
     const Razorpay = require("razorpay");
     this.razorPay = new Razorpay({
@@ -47,7 +47,7 @@ export class ShopkeepersService {
 
   async createRazorpayLinkedAccount(
     shopkeeperId: string,
-    dto: CreateRazorpayLinkedAccountDto
+    dto: CreateRazorpayLinkedAccountDto,
   ) {
     try {
       this.logger.log(`Creating Razorpay linked account for: ${shopkeeperId}`);
@@ -122,7 +122,7 @@ export class ShopkeepersService {
             createdAt: new Date(),
           },
         },
-        { new: true }
+        { new: true },
       );
 
       return {
@@ -225,7 +225,7 @@ export class ShopkeepersService {
                 shopClosedToDate: "",
               },
             },
-            { new: true }
+            { new: true },
           );
           // optionally also update the in-memory object if you need it fresh:
           shopkeeper.shopClosedFromDate = undefined;
@@ -284,7 +284,7 @@ export class ShopkeepersService {
           identifier,
           role,
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
 
       console.log(`OTP saved to database for ${normalizedEmail}: ${otp}`);
@@ -332,7 +332,7 @@ export class ShopkeepersService {
       if (!otpDoc) {
         console.log(`No OTP document found for email: ${normalizedEmail}`);
         throw new BadRequestException(
-          "OTP not found or expired. Please request a new one."
+          "OTP not found or expired. Please request a new one.",
         );
       }
 
@@ -340,7 +340,7 @@ export class ShopkeepersService {
         console.log("OTP has expired");
         await this.otpModel.deleteOne({ _id: otpDoc._id });
         throw new BadRequestException(
-          "OTP has expired. Please request a new one."
+          "OTP has expired. Please request a new one.",
         );
       }
 
@@ -348,7 +348,7 @@ export class ShopkeepersService {
         console.log("Too many attempts");
         await this.otpModel.deleteOne({ _id: otpDoc._id });
         throw new BadRequestException(
-          "Too many invalid attempts. Please request a new OTP."
+          "Too many invalid attempts. Please request a new OTP.",
         );
       }
 
@@ -356,10 +356,10 @@ export class ShopkeepersService {
         console.log(`OTP mismatch. Expected: ${otpDoc.otp}, Received: ${otp}`);
         await this.otpModel.updateOne(
           { _id: otpDoc._id },
-          { $inc: { attempts: 1 } }
+          { $inc: { attempts: 1 } },
         );
         throw new BadRequestException(
-          `Invalid OTP. ${3 - otpDoc.attempts - 1} attempts remaining.`
+          `Invalid OTP. ${3 - otpDoc.attempts - 1} attempts remaining.`,
         );
       }
 
@@ -438,7 +438,7 @@ export class ShopkeepersService {
         Date.now() - new Date(existing.lastSentAt).getTime() < 60 * 1000
       ) {
         throw new BadRequestException(
-          "Please wait 60 seconds before requesting a new OTP"
+          "Please wait 60 seconds before requesting a new OTP",
         );
       }
 
@@ -458,7 +458,7 @@ export class ShopkeepersService {
           identifier,
           role,
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
 
       console.log(`New OTP saved for ${normalizedEmail}: ${otp}`);
@@ -499,7 +499,7 @@ export class ShopkeepersService {
 
       if (!shopkeeper.approved) {
         throw new NotFoundException(
-          "Your request is still pending! Please wait for admin Approval..."
+          "Your request is still pending! Please wait for admin Approval...",
         );
       }
 
@@ -578,15 +578,21 @@ export class ShopkeepersService {
       description?: string;
       GSTNumber?: string;
       UENNumber?: string;
+      whatsAppQRNumber?: string;
+      instagramQR?: boolean;
+      whatsAppQR?: boolean;
+      instagramHandle?: string;
+      dynamicQR?: boolean;
       hasDocVerification?: boolean;
-      taxPercentage?: string | number; // Accept both string/number from FormData
+      taxPercentage?: string | number;
+      discountPercentage?: string | number;
       businessCategory?: string;
       paymentURL?: string;
       shopClosedFromDate?: Date; // Accept string from FormData
       shopClosedToDate?: Date; // Accept string from FormData
       country?: string; // IN/SG
     },
-    paymentQrPublicUrl?: string | null
+    paymentQrPublicUrl?: string | null,
   ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException("Invalid shopkeeper id");
@@ -617,6 +623,25 @@ export class ShopkeepersService {
           ? body.hasDocVerification
           : body.hasDocVerification === "true";
     }
+    if (body.dynamicQR !== undefined)
+      update.dynamicQR =
+        typeof body.dynamicQR === "boolean"
+          ? body.dynamicQR
+          : body.dynamicQR === "true";
+    if (body.whatsAppQR !== undefined)
+      update.whatsAppQR =
+        typeof body.whatsAppQR === "boolean"
+          ? body.whatsAppQR
+          : body.whatsAppQR === "true";
+    if (body.instagramHandle !== undefined)
+      update.instagramHandle = body.instagramHandle;
+    if (body.whatsAppQRNumber !== undefined)
+      update.whatsAppQRNumber = body.whatsAppQRNumber;
+    if (body.instagramQR !== undefined)
+      update.instagramQR =
+        typeof body.instagramQR === "boolean"
+          ? body.instagramQR
+          : body.instagramQR === "true";
     if (body.businessCategory !== undefined)
       update.businessCategory = body.businessCategory;
 
@@ -627,6 +652,15 @@ export class ShopkeepersService {
           ? parseFloat(body.taxPercentage)
           : body.taxPercentage;
       update.taxPercentage = isNaN(taxNum) ? 0 : taxNum;
+    }
+
+    // ✅ DISCOUNT PERCENTAGE (handle string/number)
+    if (body.discountPercentage !== undefined) {
+      const discountNum =
+        typeof body.discountPercentage === "string"
+          ? parseFloat(body.discountPercentage)
+          : body.discountPercentage;
+      update.discountPercentage = isNaN(discountNum) ? 0 : discountNum;
     }
 
     // ✅ DATES (handle string/Date from FormData)
