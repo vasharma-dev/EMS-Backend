@@ -45,6 +45,10 @@ class LayoutSettingsDto {
   @IsString() adBarBgcolor?: string;
   @IsString() adBarTextColor?: string;
   @IsBoolean() visibleQuickPicks: boolean;
+  @IsBoolean() visibleAboutUs: boolean;
+  @IsBoolean() visibleContactUs: boolean;
+  @IsString() aboutUsHeading: string;
+  @IsString() aboutUsText: string;
   @IsString() featuredProducts: string;
   @IsString() quickPicks: string;
   @IsString() banner: string;
@@ -59,6 +63,7 @@ class DesignSettingsDto {
   @ValidateNested() @Type(() => LayoutSettingsDto) layout: LayoutSettingsDto;
   @IsOptional() @IsString() bannerImage?: string;
   @IsOptional() @IsString() heroBannerImage?: string;
+  @IsOptional() @IsString() aboutUsImage?: string;
   @IsBoolean() showBanner: boolean;
   @IsString() bannerHeight: string;
 }

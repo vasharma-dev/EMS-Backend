@@ -21,7 +21,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     private readonly jwtService: JwtService,
     private readonly otpService: OtpService,
-    private readonly googleService: GoogleAuthService
+    private readonly googleService: GoogleAuthService,
   ) {}
 
   async create(data: CreateUserDto) {
@@ -41,7 +41,7 @@ export class UsersService {
     } catch (error) {
       console.error(`Failed to create user: ${error.message}`);
       throw new InternalServerErrorException(
-        "An error occurred while creating the user."
+        "An error occurred while creating the user.",
       );
     }
   }
@@ -149,7 +149,7 @@ export class UsersService {
     } catch (error) {
       console.error("Google token verification error:", error);
       throw new InternalServerErrorException(
-        "Failed to verify Google token: " + error.message
+        "Failed to verify Google token: " + error.message,
       );
     }
   }
@@ -256,7 +256,7 @@ export class UsersService {
     } catch (error) {
       console.error("Email verification error:", error);
       throw new InternalServerErrorException(
-        "Failed to verify email: " + error.message
+        "Failed to verify email: " + error.message,
       );
     }
   }
@@ -287,7 +287,7 @@ export class UsersService {
     } catch (error) {
       console.error("WhatsApp OTP send error:", error);
       throw new InternalServerErrorException(
-        "Failed to send WhatsApp OTP: " + error.message
+        "Failed to send WhatsApp OTP: " + error.message,
       );
     }
   }
@@ -295,7 +295,7 @@ export class UsersService {
   async verifyWhatsAppOtp(
     fullName: string,
     whatsAppNumber: string,
-    otp: string
+    otp: string,
   ) {
     try {
       let user = await this.userModel.findOne({ whatsAppNumber });
@@ -366,7 +366,7 @@ export class UsersService {
         throw new BadRequestException("Invalid or expired OTP");
       }
       throw new InternalServerErrorException(
-        "Failed to verify WhatsApp OTP: " + error.message
+        "Failed to verify WhatsApp OTP: " + error.message,
       );
     }
   }
@@ -394,6 +394,53 @@ export class UsersService {
 
       const saved = await created.save();
       return { message: "User created successfully", data: saved };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateUserByShopkeeper(
+    userId: string,
+    data: CreateUserDto,
+    shopkeeperId: string,
+  ) {
+    try {
+      // 1. Check if user exists and belongs to this shopkeeper
+      const existingUser = await this.userModel.findOne({
+        _id: userId,
+        provider: "Shopkeeper",
+        providerId: shopkeeperId,
+      });
+
+      if (!existingUser) {
+        throw new BadRequestException("User not found or access denied");
+      }
+
+      // 2. Check for duplicate WhatsApp / Email (excluding current user)
+      // const duplicateUser = await this.userModel.findOne({
+      //   _id: { $ne: userId },
+      //   $or: [{ whatsAppNumber: data.whatsAppNumber }, { email: data.email }],
+      // });
+
+      // if (duplicateUser) {
+      //   throw new BadRequestException(
+      //     "Another user already exists with this WhatsApp number or email",
+      //   );
+      // }
+
+      // 3. Update fields
+      existingUser.firstName = data.firstName;
+      existingUser.lastName = data.lastName;
+      existingUser.name = `${data.firstName} ${data.lastName}`;
+      existingUser.email = data.email;
+      existingUser.whatsAppNumber = data.whatsAppNumber;
+
+      const updatedUser = await existingUser.save();
+
+      return {
+        message: "User updated successfully",
+        data: updatedUser,
+      };
     } catch (error) {
       throw error;
     }

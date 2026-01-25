@@ -45,6 +45,10 @@ export class UpdateOrganizerStoreDto {
       adBarTextColor?: string;
       allProducts?: string;
       visibleFeaturedProducts?: boolean;
+      visibleAboutUs?: boolean;
+      visibleContactUs?: boolean;
+      aboutUsHeading?: string;
+      aboutUsText?: string;
       visibleQuickPicks?: boolean;
       featuredProducts?: string;
       quickPicks?: string;
@@ -53,6 +57,7 @@ export class UpdateOrganizerStoreDto {
     };
     heroBannerImage?: string;
     bannerImage?: string;
+    aboutUsImage?: string;
     showBanner?: boolean;
     bannerHeight?: string;
   };

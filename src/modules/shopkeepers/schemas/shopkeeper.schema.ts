@@ -60,7 +60,7 @@ export class RazorpayLinkedAccount {
 }
 
 @Schema({ timestamps: true })
-export class Shopkeeper {
+export class  Shopkeeper {
   @Prop({ required: true })
   name: string;
 
@@ -112,6 +112,9 @@ export class Shopkeeper {
   @Prop({ default: 0 })
   taxPercentage: number;
 
+  @Prop({ default: 0 })
+  discountPercentage: number;
+
   @Prop({ default: false })
   approved: boolean;
 
@@ -140,10 +143,25 @@ export class Shopkeeper {
   // ✅ NEW: Commission percentage (EventSH takes this %)
   @Prop({ default: 2 })
   commissionPercentage: number;
+
+  @Prop({ default: false })
+  whatsAppQR: boolean;
+
+  @Prop({ default: false })
+  instagramQR: boolean;
+
+  @Prop()
+  whatsAppQRNumber: string;
+
+  @Prop()
+  instagramHandle: string;
+
+  @Prop({ default: false })
+  dynamicQR: boolean;
 }
 
 export const RazorpayLinkedAccountSchema = SchemaFactory.createForClass(
-  RazorpayLinkedAccount
+  RazorpayLinkedAccount,
 );
 
 export const ShopkeeperSchema = SchemaFactory.createForClass(Shopkeeper);

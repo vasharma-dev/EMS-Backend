@@ -109,6 +109,7 @@ export class OrganizerStoresController {
       [
         { name: "bannerImage", maxCount: 1 },
         { name: "heroBannerImage", maxCount: 1 },
+        { name: "aboutUsImage", maxCount: 1 ,}
       ],
       {
         storage,
@@ -129,6 +130,7 @@ export class OrganizerStoresController {
     files: {
       bannerImage?: Express.Multer.File[];
       heroBannerImage?: Express.Multer.File[];
+      aboutUsImage?: Express.Multer.File[];
     },
     @Body() updateOrganizerStoreDto: UpdateOrganizerStoreDto
   ) {
@@ -165,12 +167,20 @@ export class OrganizerStoresController {
         console.log("Hero banner image path:", heroBannerImagePath);
       }
 
+      let aboutUsImagePath: string | undefined;
+      if (files.aboutUsImage && files.aboutUsImage.length > 0) {
+        aboutUsImagePath = `/uploads/banners/${files.aboutUsImage[0].filename}`;
+        console.log("About Us image path:", aboutUsImagePath);
+      }
+
+
       // Call service with parsed DTO and optional file paths
       return await this.organizerStoresService.update(
         id,
         updateOrganizerStoreDto,
         bannerImagePath, // undefined if no file
-        heroBannerImagePath // undefined if no file
+        heroBannerImagePath, // undefined if no file
+        aboutUsImagePath // undefined if no file
       );
     } catch (error) {
       console.log("Update error:", error);

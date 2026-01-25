@@ -61,12 +61,12 @@ export class OrdersController {
   @Patch(":orderId/status")
   async updateOrderStatus(
     @Param("orderId") orderId: string,
-    @Body() updateDTO: UpdateOrderDto
+    @Body() updateDTO: UpdateOrderDto,
   ) {
     try {
       return await this.ordersService.updateOrderStatus(
         orderId,
-        updateDTO.status
+        updateDTO.status,
       );
     } catch (err) {
       throw new BadRequestException(err.message);
@@ -77,7 +77,7 @@ export class OrdersController {
   async getCustomersByShopkeeper(@Param("shopkeeperId") shopkeeperId: string) {
     try {
       return await this.ordersService.getCustomersWithOrderSummary(
-        shopkeeperId
+        shopkeeperId,
       );
     } catch (error) {
       throw new InternalServerErrorException("Failed to retrieve customers");
@@ -123,7 +123,7 @@ export class OrdersController {
     try {
       const printId = await this.ordersService.createPrintData(
         body.orderId,
-        body.printData
+        body.printData,
       );
       return { printId };
     } catch (error) {
@@ -155,7 +155,7 @@ export class OrdersController {
       return printData;
     } catch (error) {
       throw new InternalServerErrorException(
-        "Failed to generate thermal print data"
+        "Failed to generate thermal print data",
       );
     }
   }
@@ -168,6 +168,18 @@ export class OrdersController {
       return shopkeeperInfo;
     } catch (error) {
       throw new InternalServerErrorException("Failed to get shopkeeper info");
+    }
+  }
+
+  @Get("coupon-code-validation/:userId/coupon/:code")
+  async validateCouponCode(
+    @Param("userId") userId: string,
+    @Param("code") code: string,
+  ) {
+    try {
+      return await this.ordersService.getCouponAppliedStatus(userId, code);
+    } catch (error) {
+      throw new BadRequestException(error.message);
     }
   }
 }

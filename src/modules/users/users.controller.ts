@@ -11,6 +11,7 @@ import {
   Param,
   BadRequestException,
   Query,
+  Patch,
 } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { Request, Response } from "express";
@@ -22,7 +23,7 @@ import { CreateUserDto } from "./dto/create-users.dto";
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
   @Get("google")
@@ -42,7 +43,7 @@ export class UsersController {
 
       let user = await this.usersService.findByProviderId(
         userFromGoogle.providerId,
-        userFromGoogle.provider
+        userFromGoogle.provider,
       );
 
       if (!user) {
@@ -78,7 +79,7 @@ export class UsersController {
   async register(@Body() createUserDto: CreateUserDto) {
     try {
       const existingUser = await this.usersService.findByEmail(
-        createUserDto.email
+        createUserDto.email,
       );
       if (existingUser) {
         throw new ConflictException("User with this email already exists.");
@@ -86,14 +87,14 @@ export class UsersController {
       return await this.usersService.create(createUserDto);
     } catch (error) {
       throw new InternalServerErrorException(
-        "An error occurred during registration."
+        "An error occurred during registration.",
       );
     }
   }
 
   @Get("get-user-by-whatsAppNumber/:whatsAppNumber")
   async getUserByWhatsAppNumber(
-    @Param("whatsAppNumber") whatsAppNumber: string
+    @Param("whatsAppNumber") whatsAppNumber: string,
   ) {
     try {
       return await this.usersService.fetchUserByWhatsAppNumber(whatsAppNumber);
@@ -107,7 +108,7 @@ export class UsersController {
    */
   @Post("verify-email-for-cart")
   async verifyEmailForCart(
-    @Body() body: { email: string; whatsAppNumber: string }
+    @Body() body: { email: string; whatsAppNumber: string },
   ) {
     try {
       if (!body.email || !body.whatsAppNumber) {
@@ -115,7 +116,7 @@ export class UsersController {
       }
       return await this.usersService.verifyEmailForCart(
         body.email,
-        body.whatsAppNumber
+        body.whatsAppNumber,
       );
     } catch (error) {
       console.error("Email verification error:", error);
@@ -150,18 +151,18 @@ export class UsersController {
       whatsAppNumber: string;
       otp: string;
       fullName: string;
-    }
+    },
   ) {
     try {
       if (!body.whatsAppNumber || !body.otp) {
         throw new BadRequestException(
-          "userId, whatsAppNumber, and otp are required"
+          "userId, whatsAppNumber, and otp are required",
         );
       }
       return await this.usersService.verifyWhatsAppOtp(
         body.fullName,
         body.whatsAppNumber,
-        body.otp
+        body.otp,
       );
     } catch (error) {
       console.error("WhatsApp OTP verification error:", error);
@@ -227,12 +228,29 @@ export class UsersController {
   @Post("create-user-by-shopkeeper/:shopkeeperId")
   async createUserByShopkeeper(
     @Body() createUserDto: CreateUserDto,
-    @Param("shopkeeperId") shopkeeperId: string
+    @Param("shopkeeperId") shopkeeperId: string,
   ) {
     try {
       return await this.usersService.createUserByShopkeeper(
         createUserDto,
-        shopkeeperId
+        shopkeeperId,
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Patch("update-user-by-shopkeeper/:shopkeeperId/:userId")
+  async updateUserByShopkeeper(
+    @Param("shopkeeperId") shopkeeperId: string,
+    @Param("userId") userId: string,
+    @Body() updateUserDto: CreateUserDto,
+  ) {
+    try {
+      return await this.usersService.updateUserByShopkeeper(
+        userId,
+        updateUserDto,
+        shopkeeperId,
       );
     } catch (error) {
       throw error;

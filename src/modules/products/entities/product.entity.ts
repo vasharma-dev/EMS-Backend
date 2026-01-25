@@ -14,6 +14,12 @@ class Variant {
   price: number;
 
   @Prop()
+  isDiscounted?: boolean;
+
+  @Prop()
+  discountedPrice?: number;
+
+  @Prop()
   compareAtPrice?: number;
 
   @Prop({ required: true })
@@ -62,6 +68,12 @@ export class Product {
 
   @Prop({ required: true })
   price: number;
+
+  @Prop()
+  isDiscounted?: boolean;
+
+  @Prop()
+  discountedPrice?: number;
 
   @Prop({ required: true })
   sku: string;

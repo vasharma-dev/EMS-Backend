@@ -21,6 +21,7 @@ import { PlansModule } from "./modules/plans/plans.module";
 import { EnquiryModule } from "./modules/enquiry/enquiry.module";
 import { ShopkeeperAnalyticsModule } from "./modules/shopkeepers/shopkeeper-analytics.module";
 import { OrganizerStoresModule } from "./modules/organizer-stores/organizer-stores.module";
+import { CouponModule } from "./modules/coupon/coupon.module";
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { OrganizerStoresModule } from "./modules/organizer-stores/organizer-stor
     EnquiryModule,
     ShopkeeperAnalyticsModule,
     OrganizerStoresModule,
+    CouponModule
   ],
 })
 export class AppModule {}

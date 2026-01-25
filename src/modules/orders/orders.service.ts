@@ -18,6 +18,10 @@ import { v4 as uuidv4 } from "uuid";
 import { CreateUserDto } from "../users/dto/create-users.dto";
 import { UsersService } from "../users/users.service";
 import fontkit from "fontkit";
+import * as QRCode from "qrcode";
+import { CouponService } from "../coupon/coupon.service";
+import { ShopkeeperStoresService } from "../shopkeeper-stores/shopkeeper-stores.service";
+import { ShopfrontStore } from "../shopkeeper-stores/entities/shopkeeper-store.entity";
 
 function asObjectId(id: string | Types.ObjectId): Types.ObjectId | string {
   // If already an ObjectId
@@ -38,8 +42,12 @@ export class OrdersService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Shopkeeper.name)
     private readonly shopkeeperModel: Model<Shopkeeper>,
+    @InjectModel(ShopfrontStore.name)
+    private readonly shopkeeperStoreModel: Model<ShopfrontStore>,
     private readonly mailService: MailService,
-    private readonly usersService: UsersService
+    private readonly usersService: UsersService,
+    private readonly couponService: CouponService,
+    private readonly shopkeeperStoreService: ShopkeeperStoresService,
   ) {}
 
   private formatPriceByCountry(amount: number, countryCode: string): string {
@@ -95,8 +103,13 @@ export class OrdersService {
         user = await this.usersService.create(createUserDto);
       }
 
-      // Step 2. Deduct inventory before creating order
-      await this.updateProductInventory(dto.items, "deduct");
+      if (dto.items[0].trackQuantity) {
+        await this.updateProductInventory(dto.items, "deduct");
+      }
+
+      if (dto.couponCode) {
+        await this.couponService.incrementUsageCount(dto.couponCode);
+      }
 
       // Step 3. Create order associated with the user
       const order = new this.orderModel({
@@ -107,25 +120,24 @@ export class OrdersService {
 
       const savedOrder = await order.save();
 
-      // Step 4. Send WhatsApp notification to shopkeeper
-      // const shopkeeper = await this.shopkeeperModel.findById(dto.shopkeeperId);
-
-      // if (shopkeeper?.whatsAppNumber) {
-      //   await this.sendWhatsAppToShopkeeper(
-      //     shopkeeper.whatsAppNumber,
-      //     shopkeeper.name || shopkeeper.shopName,
-      //     savedOrder.orderId,
-      //     savedOrder.totalAmount,
-      //     dto.items.length
-      //   );
-      // }
-
       return savedOrder;
     } catch (error) {
       throw new InternalServerErrorException(
-        "Failed to create order: " + error.message
+        "Failed to create order: " + error.message,
       );
     }
+  }
+
+  // WhatsApp chat link generator
+  private getWhatsAppLink(rawNumber: string): string {
+    const cleaned = rawNumber.replace(/\D/g, "");
+
+    // WhatsApp requires country code
+    if (!cleaned.startsWith("91")) {
+      return `https://wa.me/91${cleaned}`;
+    }
+
+    return `https://wa.me/${cleaned}`;
   }
 
   async generateReceipt(orderId: string): Promise<Buffer> {
@@ -144,6 +156,14 @@ export class OrdersService {
     const shopkeeperDetail = await this.shopkeeperModel.findOne({
       _id: shopkeeper._id,
     });
+
+    const shopkeeperId = shopkeeper._id.toString();
+    console.log(shopkeeperId);
+    const shopkeeperStoreDetail = await this.shopkeeperStoreModel.findOne({
+      shopkeeperId: shopkeeperId,
+    });
+
+    console.log(shopkeeperStoreDetail.slug);
 
     if (!shopkeeperDetail) throw new NotFoundException("Shopkeeper Not Found");
     if (!customerDetail) throw new NotFoundException("Customer Not Found");
@@ -198,7 +218,21 @@ export class OrdersService {
           .join(", ")
       : "";
 
-    return new Promise((resolve, reject) => {
+    let storeQrBuffer: Buffer | null = null;
+    let storeUrl = "";
+
+    if (shopkeeperStoreDetail?.slug) {
+      storeUrl = `https://eventsh.com/estore/${shopkeeperStoreDetail.slug}`;
+
+      storeQrBuffer = await QRCode.toBuffer(storeUrl, {
+        type: "png",
+        width: 90, // SMALL QR
+        margin: 1,
+        errorCorrectionLevel: "H",
+      });
+    }
+
+    return new Promise(async (resolve, reject) => {
       try {
         const PDFDocument = (PDFKit as any).default || PDFKit;
 
@@ -284,6 +318,7 @@ export class OrdersService {
             align: "center",
           });
         }
+
         if (shopkeeperDetail.GSTNumber) {
           doc.text(`GSTIN: ${shopkeeperDetail.GSTNumber}`, { align: "center" });
         }
@@ -300,7 +335,7 @@ export class OrdersService {
         doc.fontSize(11).font("Helvetica-Bold");
         doc.text(
           `Order #: ${order.orderId?.slice(-6)?.toUpperCase() || "N/A"}`,
-          { align: "left" }
+          { align: "left" },
         );
         doc.font("Helvetica").fontSize(10);
         doc.text(`Date: ${formatDate(order.createdAt)}`);
@@ -354,6 +389,7 @@ export class OrdersService {
         doc.moveDown(0.1);
 
         let itemTotal = 0;
+        let totalafterDiscount = 0;
 
         order.items.forEach((item: any) => {
           const itemPrice = item.price * item.quantity;
@@ -373,7 +409,7 @@ export class OrdersService {
           doc.font("Helvetica").fontSize(9);
           const priceLine = `${item.quantity} x ${formatPriceByCountry(
             item.price,
-            countryCode
+            countryCode,
           )} = ${formatPriceByCountry(itemPrice, countryCode)}`;
           doc.text(priceLine);
           doc.moveDown(0.15);
@@ -390,25 +426,76 @@ export class OrdersService {
         doc.moveDown(0.15);
         doc.font("Helvetica").fontSize(10);
 
-        if (shopkeeperDetail.taxPercentage) {
-          const taxPercent = shopkeeperDetail.taxPercentage;
+        doc.text(`Subtotal: ${formatPriceByCountry(itemTotal, countryCode)}`, {
+          align: "right",
+        });
+
+        if (shopkeeperDetail.discountPercentage) {
+          const taxPercent = shopkeeperDetail.discountPercentage;
           // same formula as frontend: tax from tax-inclusive total
-          const taxAmount =
-            (taxPercent * order.totalAmount) / (100 + taxPercent);
+          const taxAmount = (taxPercent * itemTotal) / 100;
+          totalafterDiscount = itemTotal - taxAmount;
 
           doc.text(
-            `Subtotal: ${formatPriceByCountry(itemTotal, countryCode)}`,
-            { align: "right" }
+            `Discount: -${formatPriceByCountry(taxAmount, countryCode)}`,
+            {
+              align: "right",
+            },
           );
-          doc.text(`Tax: ${formatPriceByCountry(taxAmount, countryCode)}`, {
+        }
+
+        if (order.couponCode) {
+          const coupon = await this.couponService.findOne(order.couponCode);
+          if (coupon.discountType === "PERCENTAGE") {
+            const taxPercent = coupon.discountPercentage;
+            const taxAmount = (taxPercent * itemTotal) / 100;
+            totalafterDiscount = totalafterDiscount - taxAmount;
+
+            doc.text(
+              `Coupon Discount (${coupon.code}): -${formatPriceByCountry(taxAmount, countryCode)}`,
+              {
+                align: "right",
+              },
+            );
+          }
+
+          if (coupon.discountType === "FLAT") {
+            const taxAmount = order.totalAmount - coupon.flatDiscountAmount;
+            totalafterDiscount = totalafterDiscount - taxAmount;
+
+            doc.text(
+              `Coupon Discount (${coupon.code}): -${formatPriceByCountry(taxAmount, countryCode)}`,
+              {
+                align: "right",
+              },
+            );
+          }
+        }
+
+        if (shopkeeperDetail.taxPercentage) {
+          const taxPercent = shopkeeperDetail.taxPercentage;
+          const taxAmount = (taxPercent * totalafterDiscount) / 100;
+
+          doc.text(`Tax: +${formatPriceByCountry(taxAmount, countryCode)}`, {
             align: "right",
           });
+        }
+
+        if (order.orderType === "delivery") {
+          const deliveryFee = 30;
+
+          doc.text(
+            `Delivery Fees: +${formatPriceByCountry(deliveryFee, countryCode)}`,
+            {
+              align: "right",
+            },
+          );
         }
 
         doc.font("Helvetica-Bold").fontSize(11);
         doc.text(
           `Total: ${formatPriceByCountry(order.totalAmount, countryCode)}`,
-          { align: "right" }
+          { align: "right" },
         );
 
         doc.moveDown(0.2);
@@ -431,12 +518,129 @@ export class OrdersService {
             align: "center",
           });
 
+        let whatsappQRBuffer: Buffer | null = null;
+        let instagramQRBuffer: Buffer | null = null;
+
+        if (shopkeeperDetail.whatsAppQR && shopkeeperDetail.whatsAppQRNumber) {
+          whatsappQRBuffer = await QRCode.toBuffer(
+            this.getWhatsAppLink(shopkeeperDetail.whatsAppQRNumber),
+            {
+              type: "png",
+              width: 140,
+              margin: 2,
+              errorCorrectionLevel: "H",
+            },
+          );
+        }
+
+        if (shopkeeperDetail.instagramQR && shopkeeperDetail.instagramHandle) {
+          instagramQRBuffer = await QRCode.toBuffer(
+            shopkeeperDetail.instagramHandle,
+            {
+              type: "png",
+              width: 140,
+              margin: 2,
+              errorCorrectionLevel: "H",
+            },
+          );
+        }
+
         // ========== FOOTER ==========
         doc.moveDown(0.15);
         doc.fontSize(10).font("Helvetica-Bold");
         doc.text("Thank you for your order!", { align: "center" });
         doc.font("Helvetica");
         doc.text("Visit us again!", { align: "center" });
+
+        if (storeQrBuffer) {
+          doc.moveDown(0.6);
+
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
+
+          doc.moveDown(0.4);
+
+          doc.font("Helvetica-Bold").fontSize(10);
+          doc.text("Visit Our Store", { align: "center" });
+
+          doc.moveDown(0.4);
+
+          const qrSize = 110;
+          const centerX = (doc.page.width - qrSize) / 2;
+          const y = doc.y;
+
+          doc.image(storeQrBuffer, centerX, y, { width: qrSize });
+          doc.y = y + qrSize + 6;
+
+          doc
+            .font("Helvetica")
+            .fontSize(9)
+            .text("Scan to open our online store", { align: "center" });
+
+          doc.moveDown(0.6);
+        }
+
+        if (whatsappQRBuffer || instagramQRBuffer) {
+          doc.moveDown(0.5);
+
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
+
+          doc.moveDown(0.3);
+          doc.font("Helvetica-Bold").fontSize(10);
+          doc.text("Connect With Us", { align: "center" });
+
+          doc.moveDown(0.4);
+
+          const qrSize = 70; // ✅ SMALL QR
+          const gap = 20;
+          const totalWidth =
+            (whatsappQRBuffer ? qrSize : 0) +
+            (instagramQRBuffer ? qrSize : 0) +
+            (whatsappQRBuffer && instagramQRBuffer ? gap : 0);
+
+          const startX = (doc.page.width - totalWidth) / 2;
+          const y = doc.y;
+
+          let currentX = startX;
+
+          // WhatsApp QR
+          if (whatsappQRBuffer) {
+            doc.image(whatsappQRBuffer, currentX, y, { width: qrSize });
+
+            doc
+              .font("Helvetica")
+              .fontSize(8)
+              .text("WhatsApp", currentX, y + qrSize + 4, {
+                width: qrSize,
+                align: "center",
+              });
+
+            currentX += qrSize + gap;
+          }
+
+          // Instagram QR
+          if (instagramQRBuffer) {
+            doc.image(instagramQRBuffer, currentX, y, { width: qrSize });
+
+            doc
+              .font("Helvetica")
+              .fontSize(8)
+              .text("Instagram", currentX, y + qrSize + 4, {
+                width: qrSize,
+                align: "center",
+              });
+          }
+
+          // Move cursor below QR row
+          doc.y = y + qrSize + 20;
+        }
 
         doc.end();
       } catch (error) {
@@ -447,11 +651,11 @@ export class OrdersService {
 
   async updateOrderStatus(
     orderId: string,
-    newStatus: OrderStatus
+    newStatus: OrderStatus,
   ): Promise<Order> {
     try {
       console.log(
-        `[DEBUG] Attempting to update order status for ID: ${orderId} to status: ${newStatus}`
+        `[DEBUG] Attempting to update order status for ID: ${orderId} to status: ${newStatus}`,
       );
       const order = await this.orderModel
         .findById({ _id: orderId })
@@ -465,10 +669,10 @@ export class OrdersService {
 
       if (order.status === OrderStatus.Cancelled) {
         console.log(
-          `[DEBUG] Order with ID ${orderId} is already cancelled. Cannot update.`
+          `[DEBUG] Order with ID ${orderId} is already cancelled. Cannot update.`,
         );
         throw new BadRequestException(
-          "Cannot change status of a cancelled order"
+          "Cannot change status of a cancelled order",
         );
       }
 
@@ -485,7 +689,7 @@ export class OrdersService {
 
       await order.save();
       console.log(
-        `[DEBUG] Order ${orderId} status successfully saved as ${newStatus}`
+        `[DEBUG] Order ${orderId} status successfully saved as ${newStatus}`,
       );
 
       const user = order.userId as any;
@@ -493,7 +697,7 @@ export class OrdersService {
 
       // Send email notification
       console.log(
-        `[DEBUG] Checking if email notification can be sent. User email: ${user?.email}`
+        `[DEBUG] Checking if email notification can be sent. User email: ${user?.email}`,
       );
       if (user?.email) {
         console.log("Mail");
@@ -504,13 +708,13 @@ export class OrdersService {
           newStatus !== OrderStatus.Cancelled,
           newStatus,
           order.totalAmount,
-          shopkeeper.name || shopkeeper.shopName
+          shopkeeper.name || shopkeeper.shopName,
         );
       }
 
       // Send WhatsApp notification
       console.log(
-        `[DEBUG] Checking if WhatsApp notification can be sent. User phone: ${user?.whatsAppNumber}, Shopkeeper phone: ${shopkeeper?.whatsappNumber}`
+        `[DEBUG] Checking if WhatsApp notification can be sent. User phone: ${user?.whatsAppNumber}, Shopkeeper phone: ${shopkeeper?.whatsappNumber}`,
       );
       if (user?.whatsAppNumber && shopkeeper?.whatsappNumber) {
         console.log("calledd");
@@ -521,13 +725,13 @@ export class OrdersService {
           newStatus !== OrderStatus.Cancelled,
           newStatus,
           shopkeeper.name || shopkeeper.shopName,
-          shopkeeper.whatsappNumber // Corrected casing
+          shopkeeper.whatsappNumber, // Corrected casing
         );
       }
       return order;
     } catch (error) {
       console.log(
-        `[DEBUG] An error occurred in updateOrderStatus: ${error.message}`
+        `[DEBUG] An error occurred in updateOrderStatus: ${error.message}`,
       );
       if (
         error instanceof NotFoundException ||
@@ -536,7 +740,7 @@ export class OrdersService {
         throw error;
       }
       throw new InternalServerErrorException(
-        "Failed to update order status: " + error.message
+        "Failed to update order status: " + error.message,
       );
     }
   }
@@ -544,7 +748,7 @@ export class OrdersService {
   // Update product inventory
   private async updateProductInventory(
     items: any[],
-    action: "deduct" | "restore"
+    action: "deduct" | "restore",
   ) {
     for (const item of items) {
       const product = await this.productModel.findById(item.productId);
@@ -555,20 +759,20 @@ export class OrdersService {
       // Check if this is a product with subcategories and variants
       if (item.subcategoryName && item.variantTitle) {
         const subcategory = product.subcategories?.find(
-          (sub: any) => sub.name === item.subcategoryName
+          (sub: any) => sub.name === item.subcategoryName,
         );
         if (!subcategory) {
           throw new NotFoundException(
-            `Subcategory '${item.subcategoryName}' not found`
+            `Subcategory '${item.subcategoryName}' not found`,
           );
         }
 
         const variant = subcategory.variants?.find(
-          (v: any) => v.title === item.variantTitle
+          (v: any) => v.title === item.variantTitle,
         );
         if (!variant) {
           throw new NotFoundException(
-            `Variant '${item.variantTitle}' not found`
+            `Variant '${item.variantTitle}' not found`,
           );
         }
 
@@ -577,21 +781,21 @@ export class OrdersService {
 
         if (action === "deduct" && variant.inventory < item.quantity) {
           throw new InternalServerErrorException(
-            `Insufficient stock for ${item.productName}. Available: ${variant.inventory}, Requested: ${item.quantity}`
+            `Insufficient stock for ${item.productName}. Available: ${variant.inventory}, Requested: ${item.quantity}`,
           );
         }
 
         variant.inventory += quantityChange;
 
         const subcategoryIndex = product.subcategories.findIndex(
-          (sub: any) => sub.name === item.subcategoryName
+          (sub: any) => sub.name === item.subcategoryName,
         );
         const variantIndex = subcategory.variants.findIndex(
-          (v: any) => v.title === item.variantTitle
+          (v: any) => v.title === item.variantTitle,
         );
 
         product.markModified(
-          `subcategories.${subcategoryIndex}.variants.${variantIndex}.inventory`
+          `subcategories.${subcategoryIndex}.variants.${variantIndex}.inventory`,
         );
       }
       // Handle products without subcategories (simple products)
@@ -603,7 +807,7 @@ export class OrdersService {
 
           if (action === "deduct" && product.inventory < item.quantity) {
             throw new InternalServerErrorException(
-              `Insufficient stock for ${item.productName}. Available: ${product.inventory}, Requested: ${item.quantity}`
+              `Insufficient stock for ${item.productName}. Available: ${product.inventory}, Requested: ${item.quantity}`,
             );
           }
 
@@ -622,10 +826,10 @@ export class OrdersService {
     shopkeeperName: string,
     orderId: string,
     amount: number,
-    itemCount: number
+    itemCount: number,
   ) {
     const message = `🔔 New Order Alert!\n\nHi ${shopkeeperName},\n\nYou received a new order:\n📋 Order ID: ${orderId}\n💰 Amount: ₹${amount.toFixed(
-      2
+      2,
     )}\n📦 Items: ${itemCount}\n\nPlease confirm or reject the payment in your dashboard.\n\nThank you! 🙏`;
     await this.sendWhatsAppMessage(phone, message);
   }
@@ -638,7 +842,7 @@ export class OrdersService {
     accepted: boolean,
     status: string,
     shopkeeperName: string,
-    shopkeeperPhone: string
+    shopkeeperPhone: string,
   ) {
     const statusText = accepted ? "✅ Confirmed" : "❌ Rejected";
     const message = `${statusText} Order Update\n\nHi ${userName},\n\nYour order ${orderId} has been ${
@@ -657,12 +861,12 @@ export class OrdersService {
       console.log(`[DEBUG] Attempting to send WhatsApp message to ${phone}`);
       const apiKey = process.env.CALLMEBOT_API_KEY;
       console.log(
-        `[DEBUG] CALLMEBOT_API_KEY is: ${apiKey ? "Present" : "Not Present"}`
+        `[DEBUG] CALLMEBOT_API_KEY is: ${apiKey ? "Present" : "Not Present"}`,
       );
 
       if (!apiKey) {
         throw new InternalServerErrorException(
-          "WhatsApp API key not configured."
+          "WhatsApp API key not configured.",
         );
       }
       const url = `https://api.callmebot.com/whatsapp.php`;
@@ -692,7 +896,7 @@ export class OrdersService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
-        "Failed to get order: " + error.message
+        "Failed to get order: " + error.message,
       );
     }
   }
@@ -709,7 +913,7 @@ export class OrdersService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
-        "Failed to get orders by user: " + error.message
+        "Failed to get orders by user: " + error.message,
       );
     }
   }
@@ -727,7 +931,7 @@ export class OrdersService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
-        "Failed to get orders by shopkeeper: " + error.message
+        "Failed to get orders by shopkeeper: " + error.message,
       );
     }
   }
@@ -741,7 +945,7 @@ export class OrdersService {
         .exec();
     } catch (error) {
       throw new InternalServerErrorException(
-        "Failed to list orders: " + error.message
+        "Failed to list orders: " + error.message,
       );
     }
   }
@@ -831,7 +1035,7 @@ export class OrdersService {
     } catch (error) {
       console.log(error);
       throw new InternalServerErrorException(
-        "Failed to retrieve customers order summary"
+        "Failed to retrieve customers order summary",
       );
     }
   }
@@ -1409,9 +1613,10 @@ export class OrdersService {
 
       const subtotal = order.items.reduce(
         (sum: number, item: any) => sum + item.quantity * item.price,
-        0
+        0,
       );
       const tax = order.totalAmount - subtotal;
+      const discount = (subtotal * shopkeeper.discountPercentage) / 100;
 
       printData.push({
         type: 0,
@@ -1495,7 +1700,25 @@ export class OrdersService {
         throw error;
       }
       throw new InternalServerErrorException(
-        "Failed to generate thermal print data"
+        "Failed to generate thermal print data",
+      );
+    }
+  }
+
+  async getCouponAppliedStatus(userId: string, couponCode: string) {
+    try {
+      const order = await this.orderModel.findOne({
+        userId,
+        couponCode,
+      });
+
+      if (!order) {
+        return { message: "Coupon not applied yet", applied: false };
+      }
+      return { message: "Coupon is Already Applied", applied: true };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        "Failed to check coupon applied status",
       );
     }
   }

@@ -61,6 +61,8 @@ export class OrganizerStoresService {
             fontFamily: createOrganizerStoreDto.design.fontFamily,
             layout: createOrganizerStoreDto.design.layout,
             bannerImage: createOrganizerStoreDto.design.bannerImage ?? "",
+            heroBannerImage: createOrganizerStoreDto.design.heroBannerImage ?? "",
+            aboutUsImage: createOrganizerStoreDto.design.aboutUsImage ?? "",
             showBanner: createOrganizerStoreDto.design.showBanner,
             bannerHeight: createOrganizerStoreDto.design.bannerHeight,
           },
@@ -178,7 +180,8 @@ export class OrganizerStoresService {
     organizerId: string,
     updateOrganizerDto: UpdateOrganizerStoreDto,
     bannerImagePath?: string,
-    heroBannerImagePath?: string
+    heroBannerImagePath?: string,
+    aboutUsImagePath?: string
   ) {
     try {
       const existingStore = await this.organizerStoreModel
@@ -287,6 +290,10 @@ export class OrganizerStoresService {
             bannerImagePath ??
             updateOrganizerDto.design.bannerImage ??
             existingStore.settings.design.bannerImage,
+          aboutUsImage: 
+            aboutUsImagePath ??
+            updateOrganizerDto.design.aboutUsImage ??
+            existingStore.settings.design.aboutUsImage,
           showBanner:
             updateOrganizerDto.design.showBanner ??
             existingStore.settings.design.showBanner,

@@ -29,6 +29,14 @@ export class UpdateProductVariantDto {
   price?: number;
 
   @IsOptional()
+  @IsBoolean()
+  isDiscounted?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  discountedPrice?: number;
+
+  @IsOptional()
   @IsNumber()
   compareAtPrice?: number;
 
@@ -120,6 +128,14 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   price?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isDiscounted?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  discountedPrice?: number;
 
   @IsOptional()
   @IsNumber()

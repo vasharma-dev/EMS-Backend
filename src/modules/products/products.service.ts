@@ -31,12 +31,12 @@ export class ProductsService {
   private readonly STATUSES = ["active", "draft", "archived"];
 
   constructor(
-    @InjectModel(Product.name) private productModel: Model<ProductDocument>
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
   ) {}
 
   async create(
     createProductDto: CreateProductDto,
-    shopkeeperId: string
+    shopkeeperId: string,
   ): Promise<Product> {
     try {
       // Limit images to 3
@@ -53,7 +53,7 @@ export class ProductsService {
       console.error("Error creating product:", error);
       throw new HttpException(
         `Failed to create product: ${error.message}`,
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -64,7 +64,7 @@ export class ProductsService {
     } catch (error) {
       throw new HttpException(
         `Failed to retrieve products: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -75,7 +75,7 @@ export class ProductsService {
     } catch (error) {
       throw new HttpException(
         `Failed to retrieve products for shopkeeper: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -116,19 +116,21 @@ export class ProductsService {
       }
       throw new HttpException(
         `Failed to retrieve product: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   async update(
     id: string,
-    updateProductDto: UpdateProductDto
+    updateProductDto: UpdateProductDto,
   ): Promise<Product> {
     try {
       if (!Types.ObjectId.isValid(id)) {
         throw new BadRequestException("Invalid product ID");
       }
+
+      console.log(updateProductDto, "updateProductDto");
 
       // Limit images to 3
       if (updateProductDto.images && updateProductDto.images.length > 3) {
@@ -152,7 +154,7 @@ export class ProductsService {
       }
       throw new HttpException(
         `Failed to update product: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -176,7 +178,7 @@ export class ProductsService {
       }
       throw new HttpException(
         `Failed to delete product: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -184,7 +186,7 @@ export class ProductsService {
   async generateExcelTemplate(shopkeeperId: string): Promise<Buffer> {
     try {
       console.log(
-        `🎯 Generating Excel template for shopkeeper: ${shopkeeperId}`
+        `🎯 Generating Excel template for shopkeeper: ${shopkeeperId}`,
       );
 
       const products = await this.productModel.find({
@@ -730,7 +732,7 @@ export class ProductsService {
       XLSX.utils.book_append_sheet(
         workbook,
         instructionsSheet,
-        "📋 Instructions & Demo"
+        "📋 Instructions & Demo",
       );
       XLSX.utils.book_append_sheet(workbook, worksheet, "📊 Products Data");
       XLSX.utils.book_append_sheet(workbook, categorySheet, "Categories");
@@ -738,7 +740,7 @@ export class ProductsService {
       XLSX.utils.book_append_sheet(
         workbook,
         trackQuantitySheet,
-        "TrackQuantity"
+        "TrackQuantity",
       );
 
       // Generate buffer
@@ -750,14 +752,14 @@ export class ProductsService {
       });
 
       console.log(
-        `✅ Excel template generated successfully (${buffer.length} bytes) with demo product, merged cells and working dropdowns`
+        `✅ Excel template generated successfully (${buffer.length} bytes) with demo product, merged cells and working dropdowns`,
       );
       return buffer;
     } catch (error) {
       console.error("❌ Error generating Excel template:", error);
       throw new HttpException(
         `Failed to generate Excel template: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -813,7 +815,7 @@ export class ProductsService {
   private async downloadAndSaveImage(
     googleDriveUrl: string,
     productName: string,
-    index: number
+    index: number,
   ): Promise<string> {
     try {
       console.log(`📥 Downloading image ${index + 1} for "${productName}"`);
@@ -835,7 +837,7 @@ export class ProductsService {
 
       if (!fileId) {
         console.warn(
-          `⚠️ Could not extract file ID from URL: ${googleDriveUrl}`
+          `⚠️ Could not extract file ID from URL: ${googleDriveUrl}`,
         );
         return googleDriveUrl;
       }
@@ -895,7 +897,7 @@ export class ProductsService {
 
       fs.writeFileSync(filepath, response.data);
       console.log(
-        `✅ Successfully saved image: ${filename} (${response.data.length} bytes)`
+        `✅ Successfully saved image: ${filename} (${response.data.length} bytes)`,
       );
 
       return `/uploads/products/${filename}`;
@@ -924,7 +926,7 @@ export class ProductsService {
 
       if (!worksheet) {
         throw new Error(
-          'No valid product data sheet found. Please ensure your Excel file contains a "Products Data" sheet.'
+          'No valid product data sheet found. Please ensure your Excel file contains a "Products Data" sheet.',
         );
       }
 
@@ -985,12 +987,12 @@ export class ProductsService {
             productKey,
             group,
             results,
-            shopkeeperId
+            shopkeeperId,
           );
         } catch (error) {
           console.error(
             `❌ Error processing product group ${productKey}:`,
-            error
+            error,
           );
           results.errors.push({
             row: "Multiple",
@@ -1013,7 +1015,7 @@ export class ProductsService {
       console.error("💥 Excel import failed:", error);
       throw new HttpException(
         `Import failed: ${error.message}`,
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -1022,7 +1024,7 @@ export class ProductsService {
     productKey: string,
     group: any,
     results: any,
-    shopkeeperId: string
+    shopkeeperId: string,
   ) {
     const firstRow = group.rows[0].row;
     let processedImages = [];
@@ -1038,7 +1040,7 @@ export class ProductsService {
               const savedPath = await this.downloadAndSaveImage(
                 imageUrl,
                 firstRow["Product Name"],
-                imgIndex
+                imgIndex,
               );
               processedImages.push(savedPath);
               results.processedImages++;
@@ -1064,7 +1066,7 @@ export class ProductsService {
         !this.CATEGORIES.includes(firstRow["Product Category"])
       ) {
         throw new Error(
-          `Invalid category. Must be one of: ${this.CATEGORIES.join(", ")}`
+          `Invalid category. Must be one of: ${this.CATEGORIES.join(", ")}`,
         );
       }
 
@@ -1081,7 +1083,7 @@ export class ProductsService {
       const hasVariants = group.rows.some(
         (rowData) =>
           rowData.row["Variant Title"] &&
-          rowData.row["Variant Title"].toString().trim() !== ""
+          rowData.row["Variant Title"].toString().trim() !== "",
       );
 
       let processedSubcategories = [];
@@ -1180,7 +1182,7 @@ export class ProductsService {
         });
 
         processedSubcategories = Array.from(subcategoryMap.values()).filter(
-          (subcat) => subcat.variants.length > 0
+          (subcat) => subcat.variants.length > 0,
         );
       } else {
         // No variants - use product-level inventory
@@ -1241,7 +1243,7 @@ export class ProductsService {
         console.log(`🔄 Updating product: ${firstRow["Product ID"]}`);
         await this.update(
           firstRow["Product ID"].toString().trim(),
-          productData
+          productData,
         );
         results.updated++;
       } else {
@@ -1251,7 +1253,7 @@ export class ProductsService {
       }
     } catch (error) {
       throw new Error(
-        `Product "${firstRow["Product Name"]}" processing failed: ${error.message}`
+        `Product "${firstRow["Product Name"]}" processing failed: ${error.message}`,
       );
     }
   }
