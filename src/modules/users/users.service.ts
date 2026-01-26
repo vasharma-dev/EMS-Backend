@@ -167,9 +167,6 @@ export class UsersService {
         whatsAppNumber: whatsAppNumber,
       });
 
-      console.log(whatsAppNumber, "whatsAppNumber");
-      console.log(user, "user");
-
       let isNewUser = false;
 
       if (user) {
@@ -299,8 +296,6 @@ export class UsersService {
   ) {
     try {
       let user = await this.userModel.findOne({ whatsAppNumber });
-
-      console.log(otp, whatsAppNumber);
 
       if (!user) {
         // Create new user with fullName and WhatsApp Number
