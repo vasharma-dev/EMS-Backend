@@ -300,6 +300,8 @@ export class UsersService {
     try {
       let user = await this.userModel.findOne({ whatsAppNumber });
 
+      console.log(otp, whatsAppNumber);
+
       if (!user) {
         // Create new user with fullName and WhatsApp Number
         const createUserDto: CreateUserDto = {
@@ -314,18 +316,18 @@ export class UsersService {
       }
 
       // If user already verified with same number
-      if (user.whatsAppNumber === whatsAppNumber) {
-        return {
-          success: true,
-          message: "WhatsApp number already verified",
-          user: {
-            id: user._id,
-            name: user.name,
-            whatsAppNumber: user.whatsAppNumber,
-            isWhatsAppVerified: true,
-          },
-        };
-      }
+      // if (user.whatsAppNumber === whatsAppNumber) {
+      //   return {
+      //     success: true,
+      //     message: "WhatsApp number already verified",
+      //     user: {
+      //       id: user._id,
+      //       name: user.name,
+      //       whatsAppNumber: user.whatsAppNumber,
+      //       isWhatsAppVerified: true,
+      //     },
+      //   };
+      // }
 
       // Verify the sent OTP
       await this.otpService.verifyWhatsAppOtp(whatsAppNumber, "user", otp);
