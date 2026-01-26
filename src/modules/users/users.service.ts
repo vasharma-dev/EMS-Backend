@@ -310,21 +310,6 @@ export class UsersService {
         user = await this.create(createUserDto);
       }
 
-      // If user already verified with same number
-      // if (user.whatsAppNumber === whatsAppNumber) {
-      //   return {
-      //     success: true,
-      //     message: "WhatsApp number already verified",
-      //     user: {
-      //       id: user._id,
-      //       name: user.name,
-      //       whatsAppNumber: user.whatsAppNumber,
-      //       isWhatsAppVerified: true,
-      //     },
-      //   };
-      // }
-
-      // Verify the sent OTP
       await this.otpService.verifyWhatsAppOtp(whatsAppNumber, "user", otp);
 
       // Update user with WhatsApp Number and fullName if changed
