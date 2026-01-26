@@ -43,7 +43,7 @@ export class OtpService implements OnModuleInit {
     @InjectModel(Otp.name) private otpModel: Model<Otp>,
     private mailService: MailService,
     private readonly shopkeeperService: ShopkeepersService,
-    private readonly organizerService: OrganizersService
+    private readonly organizerService: OrganizersService,
   ) {}
 
   async onModuleInit() {
@@ -78,14 +78,14 @@ export class OtpService implements OnModuleInit {
               small: true,
             });
             this.logger.log(
-              "\nScan this WhatsApp QR with the shop phone:\n" + termQR
+              "\nScan this WhatsApp QR with the shop phone:\n" + termQR,
             );
             this.logger.log(
-              "Open WhatsApp > Linked Devices > Link a device, then scan within ~20s."
+              "Open WhatsApp > Linked Devices > Link a device, then scan within ~20s.",
             );
           } catch (e) {
             this.logger.error(
-              "Failed to render QR. Raw head: " + qr.slice(0, 40) + "..."
+              "Failed to render QR. Raw head: " + qr.slice(0, 40) + "...",
             );
           }
         }
@@ -99,7 +99,7 @@ export class OtpService implements OnModuleInit {
           const err: any = lastDisconnect?.error;
           const code = err?.output?.statusCode || err?.status || err?.code;
           this.logger.warn(
-            `WhatsApp closed. code=${code}. Reconnecting in 1500ms...`
+            `WhatsApp closed. code=${code}. Reconnecting in 1500ms...`,
           );
           if (code !== DisconnectReason.loggedOut) {
             if (!this.reconnecting) {
@@ -111,7 +111,7 @@ export class OtpService implements OnModuleInit {
             }
           } else {
             this.logger.error(
-              "WhatsApp logged out. Delete whatsapp_auth folder and restart to pair again."
+              "WhatsApp logged out. Delete whatsapp_auth folder and restart to pair again.",
             );
           }
         }
@@ -139,7 +139,7 @@ export class OtpService implements OnModuleInit {
       throw new Error("Baileys version does not support pairing code API");
     }
     const code: string = await anySock.requestPairingCode(
-      phoneDigitsE164NoPlus
+      phoneDigitsE164NoPlus,
     );
     this.logger.log(`Pairing code for ${phoneDigitsE164NoPlus}: ${code}`);
     return code;
@@ -199,7 +199,7 @@ export class OtpService implements OnModuleInit {
         identifier,
         role,
       } as any,
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     await this.mailService.sendOtpEmail(email, otp);
@@ -261,7 +261,7 @@ export class OtpService implements OnModuleInit {
         identifier,
         role,
       } as any,
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     const text =
@@ -308,7 +308,7 @@ export class OtpService implements OnModuleInit {
         identifier,
         role,
       } as any,
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     const text =
@@ -322,25 +322,35 @@ export class OtpService implements OnModuleInit {
   }
 
   async verifyWhatsAppOtp(whatsappNumber: string, role: string, otp: string) {
-    const digits = this.normalizePhone(whatsappNumber);
-    const identifier = digits;
-    const channel = "whatsapp";
+    try {
+      const digits = this.normalizePhone(whatsappNumber);
+      const identifier = digits;
+      const channel = "whatsapp";
 
-    const record = await this.otpModel.findOne({ channel, role, identifier });
-    if (!record || record.expiresAt < new Date() || record.otp !== otp) {
-      if (record) {
-        if (record.attempts + 1 >= this.MAX_ATTEMPTS) {
-          await this.otpModel.deleteOne({ channel, role, identifier });
-        } else {
-          record.attempts += 1;
-          await record.save();
+      console.log(whatsappNumber, role, otp, "whatsappNumber, role, otp");
+
+      const record = await this.otpModel.findOne({ channel, role, identifier });
+      if (!record || record.expiresAt < new Date() || record.otp !== otp) {
+        if (record) {
+          if (record.attempts + 1 >= this.MAX_ATTEMPTS) {
+            await this.otpModel.deleteOne({ channel, role, identifier });
+          } else {
+            record.attempts += 1;
+            await record.save();
+          }
         }
+        throw new UnauthorizedException("Invalid or expired OTP");
       }
-      throw new UnauthorizedException("Invalid or expired OTP");
-    }
 
-    await this.otpModel.deleteOne({ channel, role, identifier });
-    return { message: "OTP verified" };
+      console.log(record, "record");
+
+      if (record) {
+        await this.otpModel.deleteOne({ channel, role, identifier });
+        return { message: "OTP verified" };
+      }
+    } catch (error) {
+      throw error;
+    }
   }
 
   async VerifyWhatsAppOtp(whatsappNumber: string, role: string, otp: string) {
@@ -403,7 +413,7 @@ export class OtpService implements OnModuleInit {
   async sendMediaMessage(
     whatsappNumber: string,
     filePath: string,
-    caption?: string
+    caption?: string,
   ) {
     console.log("called");
     if (!this.sock) throw new Error("WhatsApp not connected");

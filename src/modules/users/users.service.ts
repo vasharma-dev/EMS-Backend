@@ -167,9 +167,6 @@ export class UsersService {
         whatsAppNumber: whatsAppNumber,
       });
 
-      console.log(whatsAppNumber, "whatsAppNumber");
-      console.log(user, "user");
-
       let isNewUser = false;
 
       if (user) {
@@ -314,18 +311,18 @@ export class UsersService {
       }
 
       // If user already verified with same number
-      if (user.whatsAppNumber === whatsAppNumber) {
-        return {
-          success: true,
-          message: "WhatsApp number already verified",
-          user: {
-            id: user._id,
-            name: user.name,
-            whatsAppNumber: user.whatsAppNumber,
-            isWhatsAppVerified: true,
-          },
-        };
-      }
+      // if (user.whatsAppNumber === whatsAppNumber) {
+      //   return {
+      //     success: true,
+      //     message: "WhatsApp number already verified",
+      //     user: {
+      //       id: user._id,
+      //       name: user.name,
+      //       whatsAppNumber: user.whatsAppNumber,
+      //       isWhatsAppVerified: true,
+      //     },
+      //   };
+      // }
 
       // Verify the sent OTP
       await this.otpService.verifyWhatsAppOtp(whatsAppNumber, "user", otp);
