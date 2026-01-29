@@ -6,7 +6,9 @@ import {
   IsBoolean,
   IsNumber,
   IsDate,
+  IsEnum,
 } from "class-validator";
+import { ReceiptType } from "../schemas/shopkeeper.schema";
 
 export class UpdateShopkeeperDto {
   @IsString()
@@ -116,6 +118,15 @@ export class UpdateShopkeeperDto {
   @IsBoolean()
   @IsOptional()
   dynamicQR?: boolean;
+
+  @IsEnum(ReceiptType, {
+    message: "receiptType must be either '58mm' or 'A4'",
+  })
+  @IsOptional()
+  receiptType?: ReceiptType;
+
+  @IsOptional()
+  termsAndConditions: string;
 
   // ✅ NEW: Document Verification Status
   @IsBoolean()

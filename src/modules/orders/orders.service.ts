@@ -10,7 +10,10 @@ import { Order, OrderStatus } from "./entities/order.entity";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { Product } from "../products/entities/product.entity";
 import { User } from "../users/schemas/user.schema";
-import { Shopkeeper } from "../shopkeepers/schemas/shopkeeper.schema";
+import {
+  ReceiptType,
+  Shopkeeper,
+} from "../shopkeepers/schemas/shopkeeper.schema";
 import { MailService } from "../roles/mail.service";
 import axios from "axios";
 import * as PDFKit from "pdfkit";
@@ -165,6 +168,13 @@ export class OrdersService {
 
     console.log(shopkeeperStoreDetail.slug);
 
+    const primaryColor = shopkeeperStoreDetail?.settings?.design?.primaryColor;
+
+    console.log(shopkeeperDetail, "shopkeeperDetail");
+    console.log(order, "order");
+    console.log(shopkeeperStoreDetail, "shopkeeperStoreDetail");
+    console.log(customerDetail, "customerDetail");
+
     if (!shopkeeperDetail) throw new NotFoundException("Shopkeeper Not Found");
     if (!customerDetail) throw new NotFoundException("Customer Not Found");
 
@@ -234,415 +244,824 @@ export class OrdersService {
 
     return new Promise(async (resolve, reject) => {
       try {
-        const PDFDocument = (PDFKit as any).default || PDFKit;
+        if (shopkeeperDetail.receiptType === "58MM") {
+          const PDFDocument = (PDFKit as any).default || PDFKit;
 
-        // ========== CALCULATE DYNAMIC HEIGHT ==========
-        let contentHeight = 0;
+          // ========== CALCULATE DYNAMIC HEIGHT ==========
+          let contentHeight = 0;
 
-        // Shop info height
-        contentHeight += 20; // shop name
-        if (shopkeeperDetail.whatsappNumber) contentHeight += 12 + 3;
-        if (shopkeeperDetail.businessEmail) contentHeight += 12 + 3;
-        if (shopkeeperDetail.GSTNumber) contentHeight += 12 + 3;
-        contentHeight += 15; // spacing + separator
+          // Shop info height
+          contentHeight += 20; // shop name
+          if (shopkeeperDetail.whatsappNumber) contentHeight += 12 + 3;
+          if (shopkeeperDetail.businessEmail) contentHeight += 12 + 3;
+          if (shopkeeperDetail.GSTNumber) contentHeight += 12 + 3;
+          contentHeight += 15; // spacing + separator
 
-        // Order info height
-        contentHeight += 13 + 12 + 12 + 15; // order #, date, time + separator
+          // Order info height
+          contentHeight += 13 + 12 + 12 + 15; // order #, date, time + separator
 
-        // Customer info height
-        contentHeight += 12 + 12; // "Customer:" + name
-        if (customerDetail.whatsAppNumber) contentHeight += 12 + 2;
-        if (customerDetail.email) contentHeight += 12 + 2;
-        if (order.orderType === "pickup") {
-          contentHeight += 12 + 2;
-          if (order.pickupDate || order.pickupTime) contentHeight += 12 + 2;
-        } else if (order.orderType === "delivery") {
-          contentHeight += 12 + 2;
-          if (deliveryAddressLine) contentHeight += 12 + 2;
-        }
-        contentHeight += 15; // separator
-
-        // Items height
-        contentHeight += 13; // "Items:" heading
-        order.items.forEach((item: any) => {
-          contentHeight += 12 + 2; // product name
-          if (item.subcategoryName) contentHeight += 11 + 2; // variant
-          contentHeight += 11 + 6; // price line + spacing
-        });
-        contentHeight += 15; // separator
-
-        // Totals height
-        if (shopkeeperDetail.taxPercentage) {
-          contentHeight += 12 + 12 + 12 + 15; // subtotal + tax + total + separator
-        } else {
-          contentHeight += 12 + 15; // total + separator
-        }
-
-        // Payment info height
-        contentHeight += 12 + 12 + 15; // payment + status + separator
-
-        // Footer height
-        contentHeight += 12 + 12; // thank you + visit again
-
-        // Add padding
-        contentHeight += 20;
-
-        // Minimum height and calculate final size
-        const finalHeight = Math.max(contentHeight, 400);
-
-        // ========== CREATE PDF DOCUMENT WITH DYNAMIC HEIGHT ==========
-        const doc = new PDFDocument({
-          size: [227, finalHeight],
-          margins: { top: 10, bottom: 10, left: 10, right: 10 },
-        });
-
-        const chunks: Buffer[] = [];
-        doc.on("data", (chunk) => chunks.push(chunk));
-        doc.on("end", () => resolve(Buffer.concat(chunks)));
-        doc.on("error", (error) => reject(error));
-
-        // ========== SHOP INFO (header) ==========
-        doc
-          .fontSize(16)
-          .font("Helvetica-Bold")
-          .text(shopkeeperDetail.shopName || "Shop Name", { align: "center" });
-
-        doc.fontSize(10).font("Helvetica");
-        if (shopkeeperDetail.whatsappNumber) {
-          doc.text(`Phone: ${shopkeeperDetail.whatsappNumber}`, {
-            align: "center",
-          });
-        }
-        if (shopkeeperDetail.businessEmail) {
-          doc.text(`Email: ${shopkeeperDetail.businessEmail}`, {
-            align: "center",
-          });
-        }
-
-        if (shopkeeperDetail.GSTNumber) {
-          doc.text(`GSTIN: ${shopkeeperDetail.GSTNumber}`, { align: "center" });
-        }
-
-        doc.moveDown(0.2);
-        doc
-          .fontSize(12)
-          .text("---------------------------------------------------", {
-            align: "center",
-          });
-
-        // ========== ORDER INFO ==========
-        doc.moveDown(0.15);
-        doc.fontSize(11).font("Helvetica-Bold");
-        doc.text(
-          `Order #: ${order.orderId?.slice(-6)?.toUpperCase() || "N/A"}`,
-          { align: "left" },
-        );
-        doc.font("Helvetica").fontSize(10);
-        doc.text(`Date: ${formatDate(order.createdAt)}`);
-        doc.text(`Time: ${formatTime(order.createdAt)}`);
-
-        doc.moveDown(0.2);
-        doc
-          .fontSize(12)
-          .text("---------------------------------------------------", {
-            align: "center",
-          });
-
-        // ========== CUSTOMER INFO ==========
-        doc.moveDown(0.15);
-        doc.font("Helvetica-Bold").fontSize(10).text("Customer:");
-        doc.font("Helvetica").fontSize(10);
-        doc.text(`Name: ${customerDetail.name}`);
-        if (customerDetail.whatsAppNumber) {
-          doc.text(`Phone: ${customerDetail.whatsAppNumber}`);
-        }
-        if (customerDetail.email) {
-          doc.text(`Email: ${customerDetail.email}`);
-        }
-
-        // Pickup / Delivery (match frontend conditions)
-        if (order.orderType === "pickup") {
-          doc.text(`Order Type: Pickup`);
-          if (order.pickupDate || order.pickupTime) {
-            const pickDate = order.pickupDate
-              ? formatDate(order.pickupDate)
-              : "";
-            doc.text(`PickUp: ${pickDate} ${order.pickupTime || ""}`.trim());
+          // Customer info height
+          contentHeight += 12 + 12; // "Customer:" + name
+          if (customerDetail.whatsAppNumber) contentHeight += 12 + 2;
+          if (customerDetail.email) contentHeight += 12 + 2;
+          if (order.orderType === "pickup") {
+            contentHeight += 12 + 2;
+            if (order.pickupDate || order.pickupTime) contentHeight += 12 + 2;
+          } else if (order.orderType === "delivery") {
+            contentHeight += 12 + 2;
+            if (deliveryAddressLine) contentHeight += 12 + 2;
           }
-        } else if (order.orderType === "delivery") {
-          doc.text(`Order Type: Delivery`);
-          if (deliveryAddressLine) {
-            doc.text(`Delivery Address: ${deliveryAddressLine}`);
-          }
-        }
+          contentHeight += 15; // separator
 
-        doc.moveDown(0.2);
-        doc
-          .fontSize(12)
-          .text("---------------------------------------------------", {
-            align: "center",
+          // Items height
+          contentHeight += 13; // "Items:" heading
+          order.items.forEach((item: any) => {
+            contentHeight += 12 + 2; // product name
+            if (item.subcategoryName) contentHeight += 11 + 2; // variant
+            contentHeight += 11 + 6; // price line + spacing
           });
+          contentHeight += 15; // separator
 
-        // ========== ITEMS ==========
-        doc.moveDown(0.15);
-        doc.font("Helvetica-Bold").fontSize(11).text("Items:");
-        doc.moveDown(0.1);
-
-        let itemTotal = 0;
-        let totalafterDiscount = 0;
-
-        order.items.forEach((item: any) => {
-          const itemPrice = item.price * item.quantity;
-          itemTotal += itemPrice;
-
-          doc.font("Helvetica-Bold").fontSize(10);
-          doc.text(item.productName);
-
-          if (item.subcategoryName) {
-            doc.font("Helvetica").fontSize(9);
-            const variantLabel = item.variantTitle
-              ? `, ${item.variantTitle}`
-              : "";
-            doc.text(`(${item.subcategoryName}${variantLabel})`);
+          // Totals height
+          if (shopkeeperDetail.taxPercentage) {
+            contentHeight += 12 + 12 + 12 + 15; // subtotal + tax + total + separator
+          } else {
+            contentHeight += 12 + 15; // total + separator
           }
 
-          doc.font("Helvetica").fontSize(9);
-          const priceLine = `${item.quantity} x ${formatPriceByCountry(
-            item.price,
-            countryCode,
-          )} = ${formatPriceByCountry(itemPrice, countryCode)}`;
-          doc.text(priceLine);
+          // Payment info height
+          contentHeight += 12 + 12 + 15; // payment + status + separator
+
+          // Footer height
+          contentHeight += 12 + 12; // thank you + visit again
+
+          // Add padding
+          contentHeight += 20;
+
+          // Minimum height and calculate final size
+          const finalHeight = Math.max(contentHeight, 400);
+
+          // ========== CREATE PDF DOCUMENT WITH DYNAMIC HEIGHT ==========
+          const doc = new PDFDocument({
+            size: [227, finalHeight],
+            margins: { top: 10, bottom: 10, left: 10, right: 10 },
+          });
+
+          const chunks: Buffer[] = [];
+          doc.on("data", (chunk) => chunks.push(chunk));
+          doc.on("end", () => resolve(Buffer.concat(chunks)));
+          doc.on("error", (error) => reject(error));
+
+          // ========== SHOP INFO (header) ==========
+          doc
+            .fontSize(16)
+            .font("Helvetica-Bold")
+            .text(shopkeeperDetail.shopName || "Shop Name", {
+              align: "center",
+            });
+
+          doc.fontSize(10).font("Helvetica");
+          if (shopkeeperDetail.whatsappNumber) {
+            doc.text(`Phone: ${shopkeeperDetail.whatsappNumber}`, {
+              align: "center",
+            });
+          }
+          if (shopkeeperDetail.businessEmail) {
+            doc.text(`Email: ${shopkeeperDetail.businessEmail}`, {
+              align: "center",
+            });
+          }
+
+          if (shopkeeperDetail.GSTNumber) {
+            doc.text(`GSTIN: ${shopkeeperDetail.GSTNumber}`, {
+              align: "center",
+            });
+          }
+
+          doc.moveDown(0.2);
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
+
+          // ========== ORDER INFO ==========
           doc.moveDown(0.15);
-        });
+          doc.fontSize(11).font("Helvetica-Bold");
+          doc.text(
+            `Order #: ${order.orderId?.slice(-6)?.toUpperCase() || "N/A"}`,
+            { align: "left" },
+          );
+          doc.font("Helvetica").fontSize(10);
+          doc.text(`Date: ${formatDate(order.createdAt)}`);
+          doc.text(`Time: ${formatTime(order.createdAt)}`);
 
-        doc.moveDown(0.15);
-        doc
-          .fontSize(12)
-          .text("---------------------------------------------------", {
-            align: "center",
+          doc.moveDown(0.2);
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
+
+          // ========== CUSTOMER INFO ==========
+          doc.moveDown(0.15);
+          doc.font("Helvetica-Bold").fontSize(10).text("Customer:");
+          doc.font("Helvetica").fontSize(10);
+          doc.text(`Name: ${customerDetail.name}`);
+          if (customerDetail.whatsAppNumber) {
+            doc.text(`Phone: ${customerDetail.whatsAppNumber}`);
+          }
+          if (customerDetail.email) {
+            doc.text(`Email: ${customerDetail.email}`);
+          }
+
+          // Pickup / Delivery (match frontend conditions)
+          if (order.orderType === "pickup") {
+            doc.text(`Order Type: Pickup`);
+            if (order.pickupDate || order.pickupTime) {
+              const pickDate = order.pickupDate
+                ? formatDate(order.pickupDate)
+                : "";
+              doc.text(`PickUp: ${pickDate} ${order.pickupTime || ""}`.trim());
+            }
+          } else if (order.orderType === "delivery") {
+            doc.text(`Order Type: Delivery`);
+            if (deliveryAddressLine) {
+              doc.text(`Delivery Address: ${deliveryAddressLine}`);
+            }
+          }
+
+          doc.moveDown(0.2);
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
+
+          // ========== ITEMS ==========
+          doc.moveDown(0.15);
+          doc.font("Helvetica-Bold").fontSize(11).text("Items:");
+          doc.moveDown(0.1);
+
+          let itemTotal = 0;
+          let totalafterDiscount = 0;
+
+          order.items.forEach((item: any) => {
+            const itemPrice = item.price * item.quantity;
+            itemTotal += itemPrice;
+
+            doc.font("Helvetica-Bold").fontSize(10);
+            doc.text(item.productName);
+
+            if (item.subcategoryName) {
+              doc.font("Helvetica").fontSize(9);
+              const variantLabel = item.variantTitle
+                ? `, ${item.variantTitle}`
+                : "";
+              doc.text(`(${item.subcategoryName}${variantLabel})`);
+            }
+
+            doc.font("Helvetica").fontSize(9);
+            const priceLine = `${item.quantity} x ${formatPriceByCountry(
+              item.price,
+              countryCode,
+            )} = ${formatPriceByCountry(itemPrice, countryCode)}`;
+            doc.text(priceLine);
+            doc.moveDown(0.15);
           });
 
-        // ========== TOTALS (match frontend tax calc) ==========
-        doc.moveDown(0.15);
-        doc.font("Helvetica").fontSize(10);
+          doc.moveDown(0.15);
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
 
-        doc.text(`Subtotal: ${formatPriceByCountry(itemTotal, countryCode)}`, {
-          align: "right",
-        });
-
-        if (shopkeeperDetail.discountPercentage) {
-          const taxPercent = shopkeeperDetail.discountPercentage;
-          // same formula as frontend: tax from tax-inclusive total
-          const taxAmount = (taxPercent * itemTotal) / 100;
-          totalafterDiscount = itemTotal - taxAmount;
+          // ========== TOTALS (match frontend tax calc) ==========
+          doc.moveDown(0.15);
+          doc.font("Helvetica").fontSize(10);
 
           doc.text(
-            `Discount: -${formatPriceByCountry(taxAmount, countryCode)}`,
+            `Subtotal: ${formatPriceByCountry(itemTotal, countryCode)}`,
             {
               align: "right",
             },
           );
-        }
 
-        if (order.couponCode) {
-          const coupon = await this.couponService.findOne(order.couponCode);
-          if (coupon.discountType === "PERCENTAGE") {
-            const taxPercent = coupon.discountPercentage;
+          if (shopkeeperDetail.discountPercentage) {
+            const taxPercent = shopkeeperDetail.discountPercentage;
+            // same formula as frontend: tax from tax-inclusive total
             const taxAmount = (taxPercent * itemTotal) / 100;
-            totalafterDiscount = totalafterDiscount - taxAmount;
+            totalafterDiscount = itemTotal - taxAmount;
 
             doc.text(
-              `Coupon Discount (${coupon.code}): -${formatPriceByCountry(taxAmount, countryCode)}`,
+              `Discount: -${formatPriceByCountry(taxAmount, countryCode)}`,
               {
                 align: "right",
               },
             );
           }
 
-          if (coupon.discountType === "FLAT") {
-            const taxAmount = order.totalAmount - coupon.flatDiscountAmount;
-            totalafterDiscount = totalafterDiscount - taxAmount;
+          if (order.couponCode) {
+            const coupon = await this.couponService.findOne(order.couponCode);
+            if (coupon.discountType === "PERCENTAGE") {
+              const taxPercent = coupon.discountPercentage;
+              const taxAmount = (taxPercent * itemTotal) / 100;
+              totalafterDiscount = totalafterDiscount - taxAmount;
 
-            doc.text(
-              `Coupon Discount (${coupon.code}): -${formatPriceByCountry(taxAmount, countryCode)}`,
-              {
-                align: "right",
-              },
-            );
+              doc.text(
+                `Coupon Discount (${coupon.code}): -${formatPriceByCountry(taxAmount, countryCode)}`,
+                {
+                  align: "right",
+                },
+              );
+            }
+
+            if (coupon.discountType === "FLAT") {
+              const taxAmount = order.totalAmount - coupon.flatDiscountAmount;
+              totalafterDiscount = totalafterDiscount - taxAmount;
+
+              doc.text(
+                `Coupon Discount (${coupon.code}): -${formatPriceByCountry(taxAmount, countryCode)}`,
+                {
+                  align: "right",
+                },
+              );
+            }
           }
-        }
 
-        if (shopkeeperDetail.taxPercentage) {
-          const taxPercent = shopkeeperDetail.taxPercentage;
-          const taxAmount = (taxPercent * totalafterDiscount) / 100;
+          if (shopkeeperDetail.taxPercentage) {
+            const taxPercent = shopkeeperDetail.taxPercentage;
+            const taxAmount = (taxPercent * totalafterDiscount) / 100;
 
-          doc.text(`Tax: +${formatPriceByCountry(taxAmount, countryCode)}`, {
-            align: "right",
-          });
-        }
-
-        if (order.orderType === "delivery") {
-          const deliveryFee = 30;
-
-          doc.text(
-            `Delivery Fees: +${formatPriceByCountry(deliveryFee, countryCode)}`,
-            {
+            doc.text(`Tax: +${formatPriceByCountry(taxAmount, countryCode)}`, {
               align: "right",
-            },
+            });
+          }
+
+          if (order.orderType === "delivery") {
+            const deliveryFee = 30;
+
+            doc.text(
+              `Delivery Fees: +${formatPriceByCountry(deliveryFee, countryCode)}`,
+              {
+                align: "right",
+              },
+            );
+          }
+
+          doc.font("Helvetica-Bold").fontSize(11);
+          doc.text(
+            `Total: ${formatPriceByCountry(order.totalAmount, countryCode)}`,
+            { align: "right" },
           );
-        }
 
-        doc.font("Helvetica-Bold").fontSize(11);
-        doc.text(
-          `Total: ${formatPriceByCountry(order.totalAmount, countryCode)}`,
-          { align: "right" },
-        );
-
-        doc.moveDown(0.2);
-        doc
-          .fontSize(12)
-          .text("---------------------------------------------------", {
-            align: "center",
-          });
-
-        // ========== PAYMENT INFO ==========
-        doc.moveDown(0.15);
-        doc.font("Helvetica").fontSize(10);
-        doc.text(`Payment: Online`);
-        doc.text(`Status: ${order.status?.toUpperCase() || "PAID"}`);
-
-        doc.moveDown(0.2);
-        doc
-          .fontSize(12)
-          .text("---------------------------------------------------", {
-            align: "center",
-          });
-
-        let whatsappQRBuffer: Buffer | null = null;
-        let instagramQRBuffer: Buffer | null = null;
-
-        if (shopkeeperDetail.whatsAppQR && shopkeeperDetail.whatsAppQRNumber) {
-          whatsappQRBuffer = await QRCode.toBuffer(
-            this.getWhatsAppLink(shopkeeperDetail.whatsAppQRNumber),
-            {
-              type: "png",
-              width: 140,
-              margin: 2,
-              errorCorrectionLevel: "H",
-            },
-          );
-        }
-
-        if (shopkeeperDetail.instagramQR && shopkeeperDetail.instagramHandle) {
-          instagramQRBuffer = await QRCode.toBuffer(
-            shopkeeperDetail.instagramHandle,
-            {
-              type: "png",
-              width: 140,
-              margin: 2,
-              errorCorrectionLevel: "H",
-            },
-          );
-        }
-
-        // ========== FOOTER ==========
-        doc.moveDown(0.15);
-        doc.fontSize(10).font("Helvetica-Bold");
-        doc.text("Thank you for your order!", { align: "center" });
-        doc.font("Helvetica");
-        doc.text("Visit us again!", { align: "center" });
-
-        if (storeQrBuffer) {
-          doc.moveDown(0.6);
-
+          doc.moveDown(0.2);
           doc
             .fontSize(12)
             .text("---------------------------------------------------", {
               align: "center",
             });
 
-          doc.moveDown(0.4);
+          // ========== PAYMENT INFO ==========
+          doc.moveDown(0.15);
+          doc.font("Helvetica").fontSize(10);
+          doc.text(`Payment: Online`);
+          doc.text(`Status: ${order.status?.toUpperCase() || "PAID"}`);
 
-          doc.font("Helvetica-Bold").fontSize(10);
-          doc.text("Visit Our Store", { align: "center" });
+          doc.moveDown(0.2);
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
 
-          doc.moveDown(0.4);
+          let whatsappQRBuffer: Buffer | null = null;
+          let instagramQRBuffer: Buffer | null = null;
 
-          const qrSize = 110;
-          const centerX = (doc.page.width - qrSize) / 2;
-          const y = doc.y;
+          if (
+            shopkeeperDetail.whatsAppQR &&
+            shopkeeperDetail.whatsAppQRNumber
+          ) {
+            whatsappQRBuffer = await QRCode.toBuffer(
+              this.getWhatsAppLink(shopkeeperDetail.whatsAppQRNumber),
+              {
+                type: "png",
+                width: 140,
+                margin: 2,
+                errorCorrectionLevel: "H",
+              },
+            );
+          }
 
-          doc.image(storeQrBuffer, centerX, y, { width: qrSize });
-          doc.y = y + qrSize + 6;
+          if (
+            shopkeeperDetail.instagramQR &&
+            shopkeeperDetail.instagramHandle
+          ) {
+            instagramQRBuffer = await QRCode.toBuffer(
+              shopkeeperDetail.instagramHandle,
+              {
+                type: "png",
+                width: 140,
+                margin: 2,
+                errorCorrectionLevel: "H",
+              },
+            );
+          }
+
+          // ========== FOOTER ==========
+          doc.moveDown(0.15);
+          doc.fontSize(10).font("Helvetica-Bold");
+          doc.text("Thank you for your order!", { align: "center" });
+          doc.font("Helvetica");
+          doc.text("Visit us again!", { align: "center" });
+
+          if (storeQrBuffer) {
+            doc.moveDown(0.6);
+
+            doc
+              .fontSize(12)
+              .text("---------------------------------------------------", {
+                align: "center",
+              });
+
+            doc.moveDown(0.4);
+
+            doc.font("Helvetica-Bold").fontSize(10);
+            doc.text("Visit Our Store", { align: "center" });
+
+            doc.moveDown(0.4);
+
+            const qrSize = 110;
+            const centerX = (doc.page.width - qrSize) / 2;
+            const y = doc.y;
+
+            doc.image(storeQrBuffer, centerX, y, { width: qrSize });
+            doc.y = y + qrSize + 6;
+
+            doc
+              .font("Helvetica")
+              .fontSize(9)
+              .text("Scan to open our online store", { align: "center" });
+
+            doc.moveDown(0.6);
+          }
+
+          if (whatsappQRBuffer || instagramQRBuffer) {
+            doc.moveDown(0.5);
+
+            doc
+              .fontSize(12)
+              .text("---------------------------------------------------", {
+                align: "center",
+              });
+
+            doc.moveDown(0.3);
+            doc.font("Helvetica-Bold").fontSize(10);
+            doc.text("Connect With Us", { align: "center" });
+
+            doc.moveDown(0.4);
+
+            const qrSize = 70; // ✅ SMALL QR
+            const gap = 20;
+            const totalWidth =
+              (whatsappQRBuffer ? qrSize : 0) +
+              (instagramQRBuffer ? qrSize : 0) +
+              (whatsappQRBuffer && instagramQRBuffer ? gap : 0);
+
+            const startX = (doc.page.width - totalWidth) / 2;
+            const y = doc.y;
+
+            let currentX = startX;
+
+            // WhatsApp QR
+            if (whatsappQRBuffer) {
+              doc.image(whatsappQRBuffer, currentX, y, { width: qrSize });
+
+              doc
+                .font("Helvetica")
+                .fontSize(8)
+                .text("WhatsApp", currentX, y + qrSize + 4, {
+                  width: qrSize,
+                  align: "center",
+                });
+
+              currentX += qrSize + gap;
+            }
+
+            // Instagram QR
+            if (instagramQRBuffer) {
+              doc.image(instagramQRBuffer, currentX, y, { width: qrSize });
+
+              doc
+                .font("Helvetica")
+                .fontSize(8)
+                .text("Instagram", currentX, y + qrSize + 4, {
+                  width: qrSize,
+                  align: "center",
+                });
+            }
+
+            // Move cursor below QR row
+            doc.y = y + qrSize + 20;
+          }
+
+          doc.end();
+        }
+        if (shopkeeperDetail.receiptType === "A4") {
+          const secondaryColor = "#475569";
+          const borderColor = "#E2E8F0";
+          const textColor = "#1E293B";
+
+          const PDFDocument = (PDFKit as any).default || PDFKit;
+
+          const doc = new PDFDocument({
+            size: "A4",
+            margins: { top: 40, bottom: 40, left: 40, right: 40 },
+          });
+
+          const chunks: Buffer[] = [];
+          doc.on("data", (c) => chunks.push(c));
+          doc.on("end", () => resolve(Buffer.concat(chunks)));
+          doc.on("error", (e) => reject(e));
+
+          /* ================= 1. HEADER & BRANDING ================= */
+          doc.rect(0, 0, 10, 842).fill(primaryColor);
 
           doc
-            .font("Helvetica")
+            .fillColor(primaryColor)
+            .font("Helvetica-Bold")
+            .fontSize(22)
+            .text(shopkeeperDetail.shopName.toUpperCase(), 40, 45);
+
+          doc
             .fontSize(9)
-            .text("Scan to open our online store", { align: "center" });
+            .fillColor(secondaryColor)
+            .font("Helvetica-Oblique")
+            .text(
+              shopkeeperStoreDetail?.settings?.general?.tagline ||
+                "Premium Quality Selection",
+              40,
+              72,
+            );
 
-          doc.moveDown(0.6);
-        }
+          doc.rect(400, 40, 160, 40).fill("#F8FAFC");
+          doc
+            .fillColor(primaryColor)
+            .font("Helvetica-Bold")
+            .fontSize(24)
+            .text("INVOICE", 400, 52, { align: "center", width: 160 });
 
-        if (whatsappQRBuffer || instagramQRBuffer) {
-          doc.moveDown(0.5);
+          /* ================= 2. INFORMATION GRID ================= */
+          const gridTop = 115;
+          const colWidth = 160;
+
+          // FROM Section
+          doc
+            .fillColor(textColor)
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .text("FROM:", 40, gridTop);
 
           doc
-            .fontSize(12)
-            .text("---------------------------------------------------", {
+            .font("Helvetica-Bold")
+            .fontSize(9)
+            .fillColor(secondaryColor)
+            // Specify width and fixed start position
+            .text(shopkeeperDetail.shopName, 40, gridTop + 15, {
+              width: colWidth,
+            })
+            .font("Helvetica") // Switch back to regular for address
+            .text(shopkeeperDetail.address || "", { width: colWidth })
+            .text(`Phone: ${shopkeeperDetail.whatsappNumber}`, {
+              width: colWidth,
+            })
+            .text(`Email: ${shopkeeperDetail.businessEmail || ""}`, {
+              width: colWidth,
+            })
+            .text(`GSTIN: ${shopkeeperDetail.GSTNumber || "N/A"}`, {
+              width: colWidth,
+            });
+
+          // BILL TO Section
+          doc
+            .fillColor(textColor)
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .text("BILL TO:", 220, gridTop);
+
+          doc
+            .font("Helvetica-Bold")
+            .fontSize(9)
+            .fillColor(secondaryColor)
+            .text(customerDetail.name, 220, gridTop + 15, { width: colWidth })
+            .font("Helvetica")
+            .text(`WhatsApp: ${customerDetail.whatsAppNumber || "-"}`, {
+              width: colWidth,
+            })
+            .text(`Email: ${customerDetail.email || "-"}`, { width: colWidth });
+
+          if (order.orderType === "pickup") {
+            doc
+              .text(`Type: PICKUP`, { width: colWidth })
+              .text(
+                `Date: ${order.pickupDate ? formatDate(order.pickupDate) : ""} ${order.pickupTime || ""}`,
+                { width: colWidth },
+              );
+          } else {
+            doc
+              .text(`Type: DELIVERY`, { width: colWidth })
+              .text(`Address: ${deliveryAddressLine}`, { width: colWidth });
+          }
+
+          // ORDER INFO
+          const metaX = 390;
+          doc
+            .fillColor(textColor)
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .text("ORDER INFO:", metaX, gridTop);
+
+          const drawOrderRow = (label: string, value: string, y: number) => {
+            doc
+              .fillColor(secondaryColor)
+              .font("Helvetica")
+              .fontSize(9)
+              .text(label, metaX, y);
+            doc
+              .fillColor(textColor)
+              .font("Helvetica-Bold")
+              .text(value, metaX + 75, y, { align: "right", width: 95 });
+          };
+
+          drawOrderRow(
+            "Invoice ID:",
+            order.orderId?.slice(-6)?.toUpperCase() || "N/A",
+            gridTop + 18,
+          );
+          drawOrderRow("Date:", formatDate(order.createdAt), gridTop + 30);
+          drawOrderRow("Time:", formatTime(order.createdAt), gridTop + 42);
+
+          doc.rect(metaX + 90, gridTop + 54, 80, 16).fill(primaryColor);
+          doc
+            .fillColor("#FFFFFF")
+            .font("Helvetica-Bold")
+            .fontSize(8)
+            .text(order.status.toUpperCase(), metaX + 90, gridTop + 59, {
+              align: "center",
+              width: 80,
+            });
+
+          /* ================= 3. ITEMS TABLE ================= */
+          /* ================= 3. ITEMS TABLE ================= */
+          const tableTop = 235;
+          doc.rect(40, tableTop, 520, 25).fill(primaryColor);
+          doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(9);
+          doc.text("Item Details", 50, tableTop + 9);
+          doc.text("Qty", 280, tableTop + 9, { width: 40, align: "center" });
+          doc.text("Price", 330, tableTop + 9, { width: 70, align: "right" });
+          doc.text("Total", 485, tableTop + 9, { width: 70, align: "right" });
+
+          let yPos = tableTop + 35;
+          let itemTotal = 0;
+
+          order.items.forEach((item: any) => {
+            const lineTotal =
+              (item.discountedPrice || item.price) * item.quantity;
+            itemTotal += lineTotal;
+
+            // 1. Calculate the height of the product name to handle wrapping
+            const nameHeight = doc.heightOfString(item.productName, {
+              width: 220,
+            });
+
+            doc
+              .fillColor(textColor)
+              .font("Helvetica-Bold")
+              .fontSize(9)
+              .text(item.productName, 50, yPos, { width: 220 });
+
+            doc.font("Helvetica").text(item.quantity.toString(), 280, yPos, {
+              width: 40,
               align: "center",
             });
 
-          doc.moveDown(0.3);
-          doc.font("Helvetica-Bold").fontSize(10);
-          doc.text("Connect With Us", { align: "center" });
-
-          doc.moveDown(0.4);
-
-          const qrSize = 70; // ✅ SMALL QR
-          const gap = 20;
-          const totalWidth =
-            (whatsappQRBuffer ? qrSize : 0) +
-            (instagramQRBuffer ? qrSize : 0) +
-            (whatsappQRBuffer && instagramQRBuffer ? gap : 0);
-
-          const startX = (doc.page.width - totalWidth) / 2;
-          const y = doc.y;
-
-          let currentX = startX;
-
-          // WhatsApp QR
-          if (whatsappQRBuffer) {
-            doc.image(whatsappQRBuffer, currentX, y, { width: qrSize });
+            const unitPrice = item.discountedPrice || item.price;
+            doc.text(formatPriceByCountry(unitPrice, countryCode), 330, yPos, {
+              width: 70,
+              align: "right",
+            });
 
             doc
-              .font("Helvetica")
-              .fontSize(8)
-              .text("WhatsApp", currentX, y + qrSize + 4, {
-                width: qrSize,
-                align: "center",
+              .font("Helvetica-Bold")
+              .text(formatPriceByCountry(lineTotal, countryCode), 485, yPos, {
+                width: 70,
+                align: "right",
               });
 
-            currentX += qrSize + gap;
-          }
+            // 2. Adjust yPos based on name height
+            yPos += nameHeight + 2;
 
-          // Instagram QR
-          if (instagramQRBuffer) {
-            doc.image(instagramQRBuffer, currentX, y, { width: qrSize });
+            if (item.subcategoryName) {
+              const variantLabel = item.variantTitle
+                ? `, ${item.variantTitle}`
+                : "";
+              const variantText = `(${item.subcategoryName}${variantLabel})`;
+              const variantHeight = doc.heightOfString(variantText, {
+                width: 220,
+              });
 
+              doc
+                .fontSize(8)
+                .fillColor(secondaryColor)
+                .font("Helvetica-Oblique")
+                .text(variantText, 50, yPos, { width: 220 });
+
+              yPos += variantHeight + 5;
+            } else {
+              yPos += 8; // Small gap if no subcategory
+            }
+
+            // Draw the separator line
             doc
-              .font("Helvetica")
-              .fontSize(8)
-              .text("Instagram", currentX, y + qrSize + 4, {
-                width: qrSize,
-                align: "center",
-              });
+              .moveTo(40, yPos)
+              .lineTo(560, yPos)
+              .lineWidth(0.5)
+              .strokeColor(borderColor)
+              .stroke();
+
+            yPos += 10; // Space before next item
+          });
+
+          /* ================= 4. SUMMARY (Now Dynamic) ================= */
+          yPos += 5; // Extra padding after the last item line
+
+          // Check if summary will overflow page; if so, move to new page (Optional but recommended)
+          if (yPos > 600) {
+            doc.addPage();
+            yPos = 40;
           }
 
-          // Move cursor below QR row
-          doc.y = y + qrSize + 20;
+          let runningTotal = itemTotal;
+          const summX = 350;
+          const summValX = 475;
+
+          const drawSummary = (
+            label: string,
+            value: string,
+            currY: number,
+            isBold = false,
+          ) => {
+            doc
+              .fillColor(isBold ? textColor : secondaryColor)
+              .font(isBold ? "Helvetica-Bold" : "Helvetica")
+              .fontSize(10)
+              .text(label, summX, currY);
+            doc.text(value, summValX, currY, { width: 80, align: "right" });
+          };
+
+          drawSummary(
+            "Subtotal:",
+            formatPriceByCountry(itemTotal, countryCode),
+            yPos,
+          );
+
+          if (shopkeeperDetail.discountPercentage) {
+            const discAmt =
+              (shopkeeperDetail.discountPercentage * itemTotal) / 100;
+            runningTotal -= discAmt;
+            yPos += 18;
+            drawSummary(
+              `Store Discount (${shopkeeperDetail.discountPercentage}%):`,
+              `-${formatPriceByCountry(discAmt, countryCode)}`,
+              yPos,
+            );
+          }
+
+          if (order.couponCode) {
+            const coupon = await this.couponService.findOne(order.couponCode);
+            let couponAmt = 0;
+            if (coupon.discountType === "PERCENTAGE") {
+              couponAmt = (coupon.discountPercentage * itemTotal) / 100;
+            } else {
+              couponAmt =
+                order.totalAmount -
+                (itemTotal -
+                  (shopkeeperDetail.discountPercentage
+                    ? (shopkeeperDetail.discountPercentage * itemTotal) / 100
+                    : 0));
+              // Note: Simplified for logic flow, usually matches order.totalAmount calculation
+            }
+            runningTotal -= couponAmt;
+            yPos += 18;
+            drawSummary(
+              `Coupon (${coupon.code}):`,
+              `-${formatPriceByCountry(couponAmt, countryCode)}`,
+              yPos,
+            );
+          }
+
+          if (shopkeeperDetail.taxPercentage) {
+            const taxAmt =
+              (shopkeeperDetail.taxPercentage * runningTotal) / 100;
+            yPos += 18;
+            drawSummary(
+              `Tax (${shopkeeperDetail.taxPercentage}%):`,
+              `+${formatPriceByCountry(taxAmt, countryCode)}`,
+              yPos,
+            );
+          }
+
+          if (order.orderType === "delivery") {
+            yPos += 18;
+            drawSummary(
+              "Delivery Fees:",
+              `+${formatPriceByCountry(30, countryCode)}`,
+              yPos,
+            );
+          }
+
+          // Total Box
+          yPos += 25;
+          doc.rect(summX - 10, yPos - 8, 220, 30).fill(primaryColor);
+          doc
+            .fillColor("#FFFFFF")
+            .font("Helvetica-Bold")
+            .fontSize(12)
+            .text("TOTAL AMOUNT:", summX, yPos + 2);
+          doc.text(
+            formatPriceByCountry(order.totalAmount, countryCode),
+            summValX,
+            yPos + 2,
+            { width: 80, align: "right" },
+          );
+
+          /* ================= 5. FOOTER & QRs ================= */
+          const footerY = 650;
+          doc.rect(40, footerY, 520, 1).fill(borderColor);
+
+          // Connect Section
+          doc
+            .fillColor(textColor)
+            .font("Helvetica-Bold")
+            .fontSize(10)
+            .text("CONNECT WITH US", 40, footerY + 15);
+
+          let qrX = 40;
+          if (shopkeeperDetail.whatsAppQR) {
+            const wa = await QRCode.toBuffer(
+              `https://wa.me/${shopkeeperDetail.whatsAppQRNumber}`,
+            );
+            doc.image(wa, qrX, footerY + 35, { width: 65 });
+            doc
+              .fontSize(7)
+              .fillColor(secondaryColor)
+              .text("WhatsApp", qrX, footerY + 105, {
+                width: 65,
+                align: "center",
+              });
+            qrX += 85;
+          }
+
+          if (shopkeeperDetail.instagramQR) {
+            const insta = await QRCode.toBuffer(
+              shopkeeperDetail.instagramHandle,
+            );
+            doc.image(insta, qrX, footerY + 35, { width: 65 });
+            doc.fontSize(7).text("Instagram", qrX, footerY + 105, {
+              width: 65,
+              align: "center",
+            });
+            qrX += 85;
+          }
+
+          // Store QR (New for A4)
+          if (storeQrBuffer) {
+            doc.image(storeQrBuffer, 480, footerY + 25, { width: 75 });
+            doc.fontSize(7).text("Scan to Shop Online", 480, footerY + 105, {
+              width: 75,
+              align: "center",
+            });
+          }
+
+          // T&C
+          doc.text(
+            "Computer generated invoice. No signature required.",
+            220,
+            footerY + 47,
+          );
+
+          doc
+            .fillColor(primaryColor)
+            .font("Helvetica-Bold")
+            .fontSize(12)
+            .text("Thank you for shopping!", 0, 780, {
+              align: "center",
+              width: 595,
+            });
+
+          doc.end();
         }
-
-        doc.end();
       } catch (error) {
         reject(error);
       }

@@ -8,7 +8,11 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Shopkeeper, ShopkeeperDocument } from "./schemas/shopkeeper.schema";
+import {
+  ReceiptType,
+  Shopkeeper,
+  ShopkeeperDocument,
+} from "./schemas/shopkeeper.schema";
 import { LoginDto } from "../admin/dto/login.dto";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
@@ -587,6 +591,8 @@ export class ShopkeepersService {
       taxPercentage?: string | number;
       discountPercentage?: string | number;
       businessCategory?: string;
+      receiptType?: ReceiptType | string;
+      termsAndConditions?: string;
       paymentURL?: string;
       shopClosedFromDate?: Date; // Accept string from FormData
       shopClosedToDate?: Date; // Accept string from FormData
@@ -645,6 +651,9 @@ export class ShopkeepersService {
     if (body.businessCategory !== undefined)
       update.businessCategory = body.businessCategory;
 
+    if (body.termsAndConditions !== undefined)
+      update.termsAndConditions = body.termsAndConditions;
+
     // ✅ TAX PERCENTAGE (handle string/number)
     if (body.taxPercentage !== undefined) {
       const taxNum =
@@ -679,6 +688,18 @@ export class ShopkeepersService {
 
     // ✅ NEW: Country field
     if (body.country !== undefined) update.country = body.country;
+
+    if (body.receiptType !== undefined) {
+      const allowedValues = Object.values(ReceiptType);
+
+      if (!allowedValues.includes(body.receiptType as ReceiptType)) {
+        throw new BadRequestException(
+          `Invalid receiptType. Allowed values: ${allowedValues.join(", ")}`,
+        );
+      }
+
+      update.receiptType = body.receiptType;
+    }
 
     // ✅ Persist uploaded QR public URL (overrides paymentURL if provided)
     if (paymentQrPublicUrl) {

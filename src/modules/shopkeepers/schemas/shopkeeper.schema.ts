@@ -2,6 +2,11 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 
 import { Document } from "mongoose";
 
+export enum ReceiptType {
+  MM_58 = "58MM",
+  A4 = "A4",
+}
+
 export type ShopkeeperDocument = Shopkeeper & Document;
 
 // ✅ NEW: Razorpay linked account sub-schema
@@ -60,7 +65,7 @@ export class RazorpayLinkedAccount {
 }
 
 @Schema({ timestamps: true })
-export class  Shopkeeper {
+export class Shopkeeper {
   @Prop({ required: true })
   name: string;
 
@@ -155,6 +160,16 @@ export class  Shopkeeper {
 
   @Prop()
   instagramHandle: string;
+
+  @Prop() // Add this line
+  termsAndConditions: string;
+
+  @Prop({
+    type: String,
+    enum: ReceiptType,
+    default: ReceiptType.MM_58, // sensible default for POS
+  })
+  receiptType: ReceiptType;
 
   @Prop({ default: false })
   dynamicQR: boolean;
