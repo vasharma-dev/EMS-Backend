@@ -161,19 +161,11 @@ export class OrdersService {
     });
 
     const shopkeeperId = shopkeeper._id.toString();
-    console.log(shopkeeperId);
     const shopkeeperStoreDetail = await this.shopkeeperStoreModel.findOne({
       shopkeeperId: shopkeeperId,
     });
 
-    console.log(shopkeeperStoreDetail.slug);
-
     const primaryColor = shopkeeperStoreDetail?.settings?.design?.primaryColor;
-
-    console.log(shopkeeperDetail, "shopkeeperDetail");
-    console.log(order, "order");
-    console.log(shopkeeperStoreDetail, "shopkeeperStoreDetail");
-    console.log(customerDetail, "customerDetail");
 
     if (!shopkeeperDetail) throw new NotFoundException("Shopkeeper Not Found");
     if (!customerDetail) throw new NotFoundException("Customer Not Found");
@@ -1073,16 +1065,12 @@ export class OrdersService {
     newStatus: OrderStatus,
   ): Promise<Order> {
     try {
-      console.log(
-        `[DEBUG] Attempting to update order status for ID: ${orderId} to status: ${newStatus}`,
-      );
       const order = await this.orderModel
         .findById({ _id: orderId })
         .populate("userId")
         .populate("shopkeeperId");
 
       if (!order) {
-        console.log(`[DEBUG] Order with ID ${orderId} not found.`);
         throw new NotFoundException("Order not found");
       }
 

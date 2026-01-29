@@ -89,8 +89,6 @@ export class OrdersController {
     try {
       const receipt = await this.ordersService.generateReceipt(id);
 
-      console.log(receipt);
-
       res.set({
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename=receipt-${id.slice(-8)}.pdf`,

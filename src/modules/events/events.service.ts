@@ -91,7 +91,7 @@ export class EventsService {
       });
 
       const savedEvent = await event.save();
-      console.log("Event created successfully:", savedEvent._id);
+
       return savedEvent;
     } catch (error) {
       console.error("Error creating event:", error);
@@ -153,8 +153,6 @@ export class EventsService {
 
   async update(id: string, updateEventDto: UpdateEventDto): Promise<Event> {
     try {
-      console.log("Updating event:", id, updateEventDto);
-
       // Handle date conversions
       if (updateEventDto.startDate) {
         updateEventDto.startDate = new Date(updateEventDto.startDate) as any;
@@ -177,7 +175,6 @@ export class EventsService {
         throw new NotFoundException(`Event with ID ${id} not found`);
       }
 
-      console.log("Event updated successfully:", updatedEvent._id);
       return updatedEvent;
     } catch (error) {
       console.error("Error updating event:", error);
@@ -196,7 +193,6 @@ export class EventsService {
         throw new NotFoundException(`Event with ID ${id} not found`);
       }
 
-      console.log("Event deleted successfully:", deletedEvent._id);
       return deletedEvent;
     } catch (error) {
       console.error("Error deleting event:", error);
