@@ -15,6 +15,7 @@ async function bootstrap() {
       "https://eventsh.com",
       "https://thefoxsg.com",
       "http://localhost:8080",
+      "https://kioscart.com",
     ]; // sample static list, replace with DB call
   }
 

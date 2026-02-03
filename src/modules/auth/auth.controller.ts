@@ -122,11 +122,15 @@ export class AuthController {
       const userFromGoogle = req.user as any;
 
       if (!userFromGoogle) {
-        return res.redirect("https://eventsh.com/login?error=auth_failed");
+        return res.redirect(
+          "https://kioscart.com/estore/login?error=auth_failed",
+        );
         // return res.redirect(
-        //   "http://localhost:8080/eshop-login?error=auth_failed"
+        //   "http://localhost:8080/estore/login?error=auth_failed",
         // );
       }
+
+      console.log(userFromGoogle, "userFromGoogle");
 
       // Check if user exists, create if not
       let user = await this.usersService.findByEmail(userFromGoogle.email);
@@ -159,23 +163,25 @@ export class AuthController {
       // ✅ IMPORTANT: redirect to eshop-login with token & email
       // Frontend useEffect will detect token in URL params and call check-role API
       return res.redirect(
-        `https://eventsh.com/eshop-login?token=${encodeURIComponent(
+        `https://kioscart.com/estore/login?token=${encodeURIComponent(
           token,
         )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
           user.name,
         )}`,
       );
       // return res.redirect(
-      //   `http://localhost:8080/eshop-login?token=${encodeURIComponent(
-      //     token
+      //   `http://localhost:8080/estore/login?token=${encodeURIComponent(
+      //     token,
       //   )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
-      //     user.name
-      //   )}`
+      //     user.name,
+      //   )}`,
       // );
     } catch (error) {
-      return res.redirect("https://eventsh.com/login?error=auth_failed");
+      return res.redirect(
+        "https://https://kioscart.com/estore/login?error=auth_failed",
+      );
       // return res.redirect(
-      //   "http://localhost:8080/eshop-login?error=auth_failed"
+      //   "http://localhost:8080/estore/login?error=auth_failed",
       // );
     }
   }
