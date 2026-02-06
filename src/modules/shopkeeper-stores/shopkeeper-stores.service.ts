@@ -10,11 +10,13 @@ import slugify from "slugify/slugify";
 export class ShopkeeperStoresService {
   constructor(
     @InjectModel(ShopfrontStore.name)
-    private shopkeeperStoreModel: Model<ShopfrontStore>
+    private shopkeeperStoreModel: Model<ShopfrontStore>,
   ) {}
 
   async create(createShopkeeperStoreDto: CreateShopkeeperStoreDto) {
     try {
+      console.log(createShopkeeperStoreDto, "create");
+
       const shopfrontStore = new this.shopkeeperStoreModel({
         shopkeeperId: createShopkeeperStoreDto.shopkeeperId,
         slug: createShopkeeperStoreDto.slug,
@@ -61,9 +63,31 @@ export class ShopkeeperStoresService {
             primaryColor: createShopkeeperStoreDto.design.primaryColor,
             secondaryColor: createShopkeeperStoreDto.design.secondaryColor,
             fontFamily: createShopkeeperStoreDto.design.fontFamily,
-            layout: createShopkeeperStoreDto.design.layout,
+            layout: {
+              header: createShopkeeperStoreDto.design.layout.header,
+              allProducts: createShopkeeperStoreDto.design.layout.allProducts,
+              visibleFeaturedProducts:
+                createShopkeeperStoreDto.design.layout.visibleFeaturedProducts,
+              visibleAdvertismentBar:
+                createShopkeeperStoreDto.design.layout.visibleAdvertismentBar,
+              advertiseText:
+                createShopkeeperStoreDto.design.layout.advertiseText ?? "",
+              adBarBgcolor:
+                createShopkeeperStoreDto.design.layout.adBarBgcolor ?? "",
+              adBarTextColor:
+                createShopkeeperStoreDto.design.layout.adBarTextColor ?? "",
+              visibleQuickPicks:
+                createShopkeeperStoreDto.design.layout.visibleQuickPicks,
+              featuredProducts:
+                createShopkeeperStoreDto.design.layout.featuredProducts,
+              quickPicks: createShopkeeperStoreDto.design.layout.quickPicks,
+              banner: createShopkeeperStoreDto.design.layout.banner,
+              footer: createShopkeeperStoreDto.design.layout.footer,
+            },
             bannerImage: createShopkeeperStoreDto.design.bannerImage ?? "",
             showBanner: createShopkeeperStoreDto.design.showBanner,
+            heroBannerImage:
+              createShopkeeperStoreDto.design.heroBannerImage ?? "",
             bannerHeight: createShopkeeperStoreDto.design.bannerHeight,
           },
           features: {
@@ -183,7 +207,7 @@ export class ShopkeeperStoresService {
     shopkeeperId: string,
     updateShopkeeperDto: UpdateShopkeeperStoreDto,
     bannerImagePath?: string,
-    heroBannerImagePath?: string
+    heroBannerImagePath?: string,
   ) {
     try {
       const existingStore = await this.shopkeeperStoreModel
@@ -351,7 +375,7 @@ export class ShopkeeperStoresService {
         .findOneAndUpdate(
           { shopkeeperId },
           { $set: updateData },
-          { new: true, runValidators: true }
+          { new: true, runValidators: true },
         )
         .exec();
 

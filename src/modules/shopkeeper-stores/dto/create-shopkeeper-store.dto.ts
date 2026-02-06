@@ -55,7 +55,10 @@ class DesignSettingsDto {
   @IsString() primaryColor: string;
   @IsString() secondaryColor: string;
   @IsString() fontFamily: string;
-  @IsString() layout: LayoutSettingsDto;
+  @IsObject()
+  @ValidateNested()
+  @Type(() => LayoutSettingsDto) // THIS IS CRUCIAL
+  layout: LayoutSettingsDto;
   @IsOptional() @IsString() bannerImage?: string;
   @IsOptional() @IsString() heroBannerImage?: string;
   @IsBoolean() showBanner: boolean;

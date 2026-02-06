@@ -107,23 +107,66 @@ export class MailService {
     let body = "";
 
     if (data.status === "Approved") {
-      subject = `Your ${data.role} Registration is Approved`;
-      body = `
+      if (data.role === "Shopkeeper") {
+        subject = `Your ${data.role} Registration is Approved`;
+        body = `
+          <div style="font-family: sans-serif; max-width: 600px; color: #333;">
         <h1>Congratulations ${data.name}!</h1>
         <p>We are pleased to inform you that your application for the role of <strong>${data.role}</strong> has been 
-        <span style="color: green; font-weight: bold;">Approved</span>.</p>
-        <p>You can now log in and access your ${data.role} dashboard to start managing your activities.</p>
-        <p>Regards,<br/>EventSH Team</p>
-      `;
+        <span style="color: #008080; font-weight: bold;">Approved</span>.</p>
+        
+        <p>Your KiosCart OS account is now active. You can manage your storefront, inventory, and kiosks from your central dashboard.</p>
+        
+        <div style="margin: 30px 0;">
+          <p><strong>Action Required:</strong> Click below to log in using your <strong>WhatsApp Number</strong>:</p>
+          <a href="https://kioscart.com/login" 
+             style="background-color: #008080; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+             Login to Dashboard
+          </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666;">
+          If the button doesn't work, copy and paste this link into your browser:<br/>
+          <a href="https://kioscart.com/login" style="color: #008080;">https://kioscart.com/login</a>
+        </p>
+
+        <p>Welcome to the future of retail,<br/><strong>The KiosCart Team</strong></p>
+      </div>
+        `;
+      }
+      if (data.role === "Organizer") {
+        subject = `Your ${data.role} Registration is Approved`;
+        body = `
+          <div style="font-family: sans-serif; max-width: 600px; color: #333;">
+        <h1>Congratulations ${data.name}!</h1>
+        <p>We are pleased to inform you that your application for the role of <strong>${data.role}</strong> has been 
+        <span style="color: #008080; font-weight: bold;">Approved</span>.</p>
+        
+
+        <p>Thank You,<br/><strong>The EventSH Team</strong></p>
+      </div>`;
+      }
     } else if (data.status === "Rejected") {
-      subject = `Your ${data.role} Registration is Rejected`;
-      body = `
-        <h1>Hello ${data.name},</h1>
-        <p>We regret to inform you that your application for the role of <strong>${data.role}</strong> has been 
-        <span style="color: red; font-weight: bold;">Rejected</span>.</p>
-        <p>If you believe this is a mistake or would like to appeal, please contact our support team.</p>
-        <p>Regards,<br/>EventSH Team</p>
-      `;
+      if (data.role === "Shopkeeper") {
+        subject = `Your ${data.role} Registration is Rejected`;
+        body = `
+          <h1>Hello ${data.name},</h1>
+          <p>We regret to inform you that your application for the role of <strong>${data.role}</strong> has been 
+          <span style="color: red; font-weight: bold;">Rejected</span>.</p>
+          <p>If you believe this is a mistake or would like to appeal, please contact our support team.</p>
+          <p>Regards,<br/>KiosCart Team</p>
+        `;
+      }
+      if (data.role === "Organizer") {
+        subject = `Your ${data.role} Registration is Rejected`;
+        body = `
+          <h1>Hello ${data.name},</h1>
+          <p>We regret to inform you that your application for the role of <strong>${data.role}</strong> has been 
+          <span style="color: red; font-weight: bold;">Rejected</span>.</p>
+          <p>If you believe this is a mistake or would like to appeal, please contact our support team.</p>
+          <p>Regards,<br/>EventSH Team</p>
+        `;
+      }
     }
 
     await this.transporter.sendMail({
@@ -348,7 +391,7 @@ export class MailService {
     accepted: boolean,
     status: string,
     amount: number,
-    shopkeeperName: string
+    shopkeeperName: string,
   ) {
     const statusColor = accepted ? "#22c55e" : "#ef4444";
     const subject = accepted
