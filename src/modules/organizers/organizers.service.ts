@@ -7,7 +7,11 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { Organizer, OrganizerDocument } from "./schemas/organizer.schema";
+import {
+  Organizer,
+  OrganizerDocument,
+  ReceiptType,
+} from "./schemas/organizer.schema";
 import { LocalDto } from "../auth/dto/local.dto";
 import * as bcrypt from "bcrypt";
 import { JwtService } from "@nestjs/jwt";
@@ -35,7 +39,7 @@ export class OrganizersService {
     private userModel: Model<User>,
     @InjectModel(Plan.name) private planModel: Model<Plan>,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
     // private readonly otpService: OtpService
   ) {}
 
@@ -89,7 +93,7 @@ export class OrganizersService {
       0,
       0,
       0,
-      0
+      0,
     );
 
     // Calculate end of today (just before midnight next day)
@@ -100,7 +104,7 @@ export class OrganizersService {
       23,
       59,
       59,
-      999
+      999,
     );
 
     // Convert organizerId to ObjectId if needed (depends on your schema and ORM)
@@ -213,7 +217,7 @@ export class OrganizersService {
           identifier,
           role,
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
 
       console.log(`OTP saved to database for ${normalizedEmail}: ${otp}`);
@@ -260,7 +264,7 @@ export class OrganizersService {
       if (!otpDoc) {
         console.log(`No OTP document found for email: ${normalizedEmail}`);
         throw new BadRequestException(
-          "OTP not found or expired. Please request a new one."
+          "OTP not found or expired. Please request a new one.",
         );
       }
 
@@ -268,7 +272,7 @@ export class OrganizersService {
         console.log("OTP has expired");
         await this.otpModel.deleteOne({ _id: otpDoc._id });
         throw new BadRequestException(
-          "OTP has expired. Please request a new one."
+          "OTP has expired. Please request a new one.",
         );
       }
 
@@ -276,7 +280,7 @@ export class OrganizersService {
         console.log("Too many attempts");
         await this.otpModel.deleteOne({ _id: otpDoc._id });
         throw new BadRequestException(
-          "Too many invalid attempts. Please request a new OTP."
+          "Too many invalid attempts. Please request a new OTP.",
         );
       }
 
@@ -284,10 +288,10 @@ export class OrganizersService {
         console.log(`OTP mismatch. Expected: ${otpDoc.otp}, Received: ${otp}`);
         await this.otpModel.updateOne(
           { _id: otpDoc._id },
-          { $inc: { attempts: 1 } }
+          { $inc: { attempts: 1 } },
         );
         throw new BadRequestException(
-          `Invalid OTP. ${3 - otpDoc.attempts - 1} attempts remaining.`
+          `Invalid OTP. ${3 - otpDoc.attempts - 1} attempts remaining.`,
         );
       }
 
@@ -363,7 +367,7 @@ export class OrganizersService {
         Date.now() - new Date(existing.lastSentAt).getTime() < 60 * 1000
       ) {
         throw new BadRequestException(
-          "Please wait 60 seconds before requesting a new OTP"
+          "Please wait 60 seconds before requesting a new OTP",
         );
       }
 
@@ -383,7 +387,7 @@ export class OrganizersService {
           identifier,
           role,
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       );
 
       console.log(`New OTP saved for ${normalizedEmail}: ${otp}`);
@@ -487,62 +491,228 @@ export class OrganizersService {
     }
   }
 
+  // async updateProfile(
+  //   id: string,
+  //   body: {
+  //     name?: string;
+  //     email?: string;
+  //     organizationName?: string;
+  //     businessEmail?: string;
+  //     whatsAppNumber?: string;
+  //     address?: string;
+  //     slug?: string;
+  //     paymentURL?: string;
+  //     phoneNumber?: string;
+  //     bio?: string;
+  //   },
+  //   paymentQrPublicUrl?: string | null
+  // ) {
+  //   if (!Types.ObjectId.isValid(id)) {
+  //     throw new BadRequestException("Invalid organizer id");
+  //   }
+
+  //   const update: Record<string, any> = {};
+
+  //   if (body.name !== undefined) update.name = body.name;
+  //   if (body.email !== undefined) update.email = body.email.toLowerCase();
+  //   if (body.organizationName !== undefined)
+  //     update.organizationName = body.organizationName;
+  //   if (body.phoneNumber !== undefined) update.phoneNumber = body.phoneNumber;
+  //   if (body.businessEmail !== undefined)
+  //     update.businessEmail = body.businessEmail.toLowerCase();
+  //   if (body.whatsAppNumber !== undefined)
+  //     update.whatsAppNumber = body.whatsAppNumber;
+  //   if (body.address !== undefined) update.address = body.address;
+  //   if (body.slug !== undefined) update.slug = body.slug;
+  //   if (body.paymentURL !== undefined) update.paymentURL = body.paymentURL;
+  //   if (body.phoneNumber !== undefined) update.phoneNumber = body.phoneNumber;
+  //   if (body.bio !== undefined) update.bio = body.bio;
+
+  //   if (paymentQrPublicUrl) {
+  //     update.paymentURL = paymentQrPublicUrl;
+  //   }
+
+  //   const updated = await this.organizerModel
+  //     .findByIdAndUpdate(id, update, {
+  //       new: true,
+  //       runValidators: true,
+  //     })
+  //     .lean()
+  //     .exec();
+
+  //   if (!updated) {
+  //     throw new NotFoundException("Organizer not found");
+  //   }
+
+  //   delete (updated as any).password; // if password exists
+
+  //   return { message: "Profile updated", data: updated };
+  // }
+
   async updateProfile(
     id: string,
     body: {
-      name?: string;
+      ownerName?: string;
+      shopName?: string;
       email?: string;
-      organizationName?: string;
       businessEmail?: string;
-      whatsAppNumber?: string;
+      whatsappNumber?: string;
+      phone?: string;
       address?: string;
-      slug?: string;
+      description?: string;
+      GSTNumber?: string;
+      UENNumber?: string;
+      whatsAppQRNumber?: string;
+      instagramQR?: boolean;
+      whatsAppQR?: boolean;
+      instagramHandle?: string;
+      dynamicQR?: boolean;
+      hasDocVerification?: boolean;
+      taxPercentage?: string | number;
+      discountPercentage?: string | number;
+      businessCategory?: string;
+      receiptType?: ReceiptType | string;
+      termsAndConditions?: string;
       paymentURL?: string;
-      phoneNumber?: string;
-      bio?: string;
+      shopClosedFromDate?: Date; // Accept string from FormData
+      shopClosedToDate?: Date; // Accept string from FormData
+      country?: string; // IN/SG
     },
-    paymentQrPublicUrl?: string | null
+    paymentQrPublicUrl?: string | null,
   ) {
-    if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException("Invalid organizer id");
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new BadRequestException("Invalid shopkeeper id");
+      }
+
+      console.log(body);
+
+      const update: Record<string, any> = {};
+
+      // ✅ EXISTING FIELDS
+      if (body.ownerName !== undefined) update.name = body.ownerName;
+      if (body.shopName !== undefined) update.shopName = body.shopName;
+      if (body.email !== undefined)
+        update.email = this.normalizeEmail(body.email);
+      if (body.businessEmail !== undefined)
+        update.businessEmail = this.normalizeEmail(body.businessEmail);
+      if (body.whatsappNumber !== undefined)
+        update.whatsappNumber = body.whatsappNumber;
+      if (body.phone !== undefined) update.phone = body.phone;
+      if (body.address !== undefined) update.address = body.address;
+      if (body.description !== undefined) update.description = body.description;
+
+      // ✅ NEW FIELDS
+      if (body.GSTNumber !== undefined) update.GSTNumber = body.GSTNumber;
+      if (body.UENNumber !== undefined) update.UENNumber = body.UENNumber;
+      if (body.hasDocVerification !== undefined) {
+        // ✅ Type-safe boolean conversion
+        update.hasDocVerification =
+          typeof body.hasDocVerification === "boolean"
+            ? body.hasDocVerification
+            : body.hasDocVerification === "true";
+      }
+      if (body.dynamicQR !== undefined)
+        update.dynamicQR =
+          typeof body.dynamicQR === "boolean"
+            ? body.dynamicQR
+            : body.dynamicQR === "true";
+      if (body.whatsAppQR !== undefined)
+        update.whatsAppQR =
+          typeof body.whatsAppQR === "boolean"
+            ? body.whatsAppQR
+            : body.whatsAppQR === "true";
+      if (body.instagramHandle !== undefined)
+        update.instagramHandle = body.instagramHandle;
+      if (body.whatsAppQRNumber !== undefined)
+        update.whatsAppQRNumber = body.whatsAppQRNumber;
+      if (body.instagramQR !== undefined)
+        update.instagramQR =
+          typeof body.instagramQR === "boolean"
+            ? body.instagramQR
+            : body.instagramQR === "true";
+      if (body.businessCategory !== undefined)
+        update.businessCategory = body.businessCategory;
+
+      if (body.termsAndConditions !== undefined)
+        update.termsAndConditions = body.termsAndConditions;
+
+      // ✅ TAX PERCENTAGE (handle string/number)
+      if (body.taxPercentage !== undefined) {
+        const taxNum =
+          typeof body.taxPercentage === "string"
+            ? parseFloat(body.taxPercentage)
+            : body.taxPercentage;
+        update.taxPercentage = isNaN(taxNum) ? 0 : taxNum;
+      }
+
+      // ✅ DISCOUNT PERCENTAGE (handle string/number)
+      if (body.discountPercentage !== undefined) {
+        const discountNum =
+          typeof body.discountPercentage === "string"
+            ? parseFloat(body.discountPercentage)
+            : body.discountPercentage;
+        update.discountPercentage = isNaN(discountNum) ? 0 : discountNum;
+      }
+
+      // ✅ DATES (handle string/Date from FormData)
+      if (body.shopClosedFromDate !== undefined) {
+        update.shopClosedFromDate =
+          typeof body.shopClosedFromDate === "string"
+            ? new Date(body.shopClosedFromDate)
+            : body.shopClosedFromDate;
+      }
+      if (body.shopClosedToDate !== undefined) {
+        update.shopClosedToDate =
+          typeof body.shopClosedToDate === "string"
+            ? new Date(body.shopClosedToDate)
+            : body.shopClosedToDate;
+      }
+
+      // ✅ NEW: Country field
+      if (body.country !== undefined) update.country = body.country;
+
+      if (body.receiptType !== undefined) {
+        const allowedValues = Object.values(ReceiptType);
+
+        if (!allowedValues.includes(body.receiptType as ReceiptType)) {
+          throw new BadRequestException(
+            `Invalid receiptType. Allowed values: ${allowedValues.join(", ")}`,
+          );
+        }
+
+        update.receiptType = body.receiptType;
+      }
+
+      // ✅ Persist uploaded QR public URL (overrides paymentURL if provided)
+      if (paymentQrPublicUrl) {
+        update.paymentURL = paymentQrPublicUrl;
+      } else if (body.paymentURL !== undefined) {
+        update.paymentURL = body.paymentURL;
+      }
+
+      console.log("Update payload:", update);
+
+      const updated = await this.organizerModel
+        .findByIdAndUpdate(id, update, { new: true, runValidators: true })
+        .lean()
+        .exec();
+
+      if (!updated) {
+        throw new NotFoundException("Organizer not found");
+      }
+
+      // ✅ Remove sensitive data
+      delete (updated as any).password;
+      delete (updated as any).__v;
+
+      return {
+        message: "Profile updated successfully",
+        data: updated,
+      };
+    } catch (error) {
+      console.log(error, "error");
     }
-
-    const update: Record<string, any> = {};
-
-    if (body.name !== undefined) update.name = body.name;
-    if (body.email !== undefined) update.email = body.email.toLowerCase();
-    if (body.organizationName !== undefined)
-      update.organizationName = body.organizationName;
-    if (body.phoneNumber !== undefined) update.phoneNumber = body.phoneNumber;
-    if (body.businessEmail !== undefined)
-      update.businessEmail = body.businessEmail.toLowerCase();
-    if (body.whatsAppNumber !== undefined)
-      update.whatsAppNumber = body.whatsAppNumber;
-    if (body.address !== undefined) update.address = body.address;
-    if (body.slug !== undefined) update.slug = body.slug;
-    if (body.paymentURL !== undefined) update.paymentURL = body.paymentURL;
-    if (body.phoneNumber !== undefined) update.phoneNumber = body.phoneNumber;
-    if (body.bio !== undefined) update.bio = body.bio;
-
-    if (paymentQrPublicUrl) {
-      update.paymentURL = paymentQrPublicUrl;
-    }
-
-    const updated = await this.organizerModel
-      .findByIdAndUpdate(id, update, {
-        new: true,
-        runValidators: true,
-      })
-      .lean()
-      .exec();
-
-    if (!updated) {
-      throw new NotFoundException("Organizer not found");
-    }
-
-    delete (updated as any).password; // if password exists
-
-    return { message: "Profile updated", data: updated };
   }
 
   async getOrganizerBySlug(slug: string) {
@@ -575,7 +745,7 @@ export class OrganizersService {
       organizer.planStartDate = new Date();
       organizer.planExpiryDate = new Date(
         organizer.planStartDate.getTime() +
-          plan.validityInDays * 24 * 60 * 60 * 1000
+          plan.validityInDays * 24 * 60 * 60 * 1000,
       );
       organizer.pricePaid = plan.price.toString();
 

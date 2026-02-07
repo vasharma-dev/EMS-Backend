@@ -27,7 +27,7 @@ export class StallsService {
     @InjectModel("Shopkeeper") private shopkeeperModel: Model<any>,
     @InjectModel("Event") private eventModel: Model<any>,
     @InjectModel("Organizer") private organizerModel: Model<any>,
-    private otpService: OtpService
+    private otpService: OtpService,
   ) {
     // Ensure upload directory exists
     const qrDir = path.join(process.cwd(), "uploads", "stallQRs");
@@ -51,7 +51,7 @@ export class StallsService {
 
       if (createStallDto.shopkeeperId) {
         const existingShopkeeper = await this.shopkeeperModel.findById(
-          createStallDto.shopkeeperId
+          createStallDto.shopkeeperId,
         );
         if (!existingShopkeeper) {
           throw new NotFoundException("Shopkeeper not found");
@@ -85,7 +85,7 @@ export class StallsService {
             !createStallDto.shopkeeperWhatsAppNumber
           ) {
             throw new BadRequestException(
-              "Shopkeeper name, email, and WhatsApp number are required for new registration"
+              "Shopkeeper name, email, and WhatsApp number are required for new registration",
             );
           }
 
@@ -117,7 +117,7 @@ export class StallsService {
 
       if (existingRequest) {
         throw new ConflictException(
-          "You already have a pending or active stall request for this event"
+          "You already have a pending or active stall request for this event",
         );
       }
 
@@ -176,7 +176,7 @@ export class StallsService {
 
   async selectTablesAndAddOns(
     stallId: string,
-    selectDto: SelectTablesAndAddOnsDto
+    selectDto: SelectTablesAndAddOnsDto,
   ) {
     try {
       if (!Types.ObjectId.isValid(stallId)) {
@@ -192,7 +192,7 @@ export class StallsService {
 
       if (stall.status !== "Confirmed") {
         throw new BadRequestException(
-          "Stall request must be confirmed by organizer before selecting tables"
+          "Stall request must be confirmed by organizer before selecting tables",
         );
       }
 
@@ -211,7 +211,7 @@ export class StallsService {
         allTables = Object.values(event.venueTables).flat();
         console.log(
           "📊 venueTables is object - extracted tables:",
-          allTables.length
+          allTables.length,
         );
       } else if (Array.isArray(event.venueTables)) {
         // venueTables is an array (backward compatibility)
@@ -224,7 +224,7 @@ export class StallsService {
       }
 
       const selectedPositionIds = selectDto.selectedTables.map(
-        (t) => t.positionId
+        (t) => t.positionId,
       );
 
       const bookedStalls = await this.stallModel.find({
@@ -235,33 +235,33 @@ export class StallsService {
       });
 
       const bookedPositionIds = bookedStalls.flatMap((s) =>
-        s.selectedTables.map((t) => t.positionId)
+        s.selectedTables.map((t) => t.positionId),
       );
 
       const unavailableTables = selectedPositionIds.filter((posId) =>
-        bookedPositionIds.includes(posId)
+        bookedPositionIds.includes(posId),
       );
 
       if (unavailableTables.length > 0) {
         throw new ConflictException(
           `Some selected tables are no longer available: ${unavailableTables.join(
-            ", "
-          )}`
+            ", ",
+          )}`,
         );
       }
 
       const tablesTotal = selectDto.selectedTables.reduce(
         (sum, table) => sum + table.price,
-        0
+        0,
       );
       const depositTotal = selectDto.selectedTables.reduce(
         (sum, table) => sum + table.depositAmount,
-        0
+        0,
       );
       const addOnsTotal = selectDto.selectedAddOns
         ? selectDto.selectedAddOns.reduce(
             (sum, addon) => sum + addon.price * addon.quantity,
-            0
+            0,
           )
         : 0;
       const grandTotal = tablesTotal + depositTotal + addOnsTotal;
@@ -281,7 +281,7 @@ export class StallsService {
             selectionDate: new Date(),
             notes: selectDto.notes || stall.notes,
           },
-          { new: true }
+          { new: true },
         )
         .populate([
           {
@@ -309,7 +309,7 @@ export class StallsService {
                 ...tableObject,
                 isBooked: isSelected ? true : tableObject.isBooked,
               };
-            }
+            },
           );
         });
       } else {
@@ -329,7 +329,7 @@ export class StallsService {
       await this.eventModel.findByIdAndUpdate(
         event._id,
         { venueTables: updatedVenueTables },
-        { new: true }
+        { new: true },
       );
 
       return {
@@ -409,7 +409,7 @@ export class StallsService {
 
       // ===== GENERATE STALL TICKET PDF (Same as tickets.service.ts) =====
       const shopkeeper = await this.shopkeeperModel.findById(
-        stall.shopkeeperId
+        stall.shopkeeperId,
       );
       const event: any = stall.eventId;
 
@@ -433,11 +433,11 @@ export class StallsService {
       await this.sendStallTicketViaWhatsApp(
         stall,
         qrCodeBase64,
-        shopkeeper.whatsappNumber
+        shopkeeper.whatsappNumber,
       );
 
       this.logger.log(
-        `Payment confirmed and stall ticket sent for stall ${stallId}`
+        `Payment confirmed and stall ticket sent for stall ${stallId}`,
       );
 
       return {
@@ -580,7 +580,7 @@ export class StallsService {
                 Venue Name: ${t.layoutName}</br>
                 Price: $${t.price.toFixed(2)} | Deposit: $${t.depositAmount.toFixed(2)}
               </div>
-            `
+            `,
               )
               .join("")}
           </div>
@@ -597,7 +597,7 @@ export class StallsService {
                   <strong>${a.name}</strong> x${a.quantity}<br>
                   Price: $${(a.price * a.quantity).toFixed(2)}
                 </div>
-              `
+              `,
                 )
                 .join("")}
             </div>
@@ -649,7 +649,7 @@ export class StallsService {
   // ===== GENERATE STALL TICKET PDF (Same pattern as tickets.service.ts) =====
   private async generateStallTicketPDF(
     stall: Stall,
-    qrBase64: string
+    qrBase64: string,
   ): Promise<Buffer> {
     const html = this.generateStallTicketHTML(stall, qrBase64);
 
@@ -677,7 +677,7 @@ export class StallsService {
   private async sendStallTicketViaWhatsApp(
     stall: Stall,
     qrBase64: string,
-    whatsappNumber: string
+    whatsappNumber: string,
   ): Promise<void> {
     try {
       console.log("Sending stall ticket via WhatsApp");
@@ -695,7 +695,7 @@ export class StallsService {
       await fs.promises.writeFile(pdfPath, pdfBuffer);
 
       const eventDate = new Date(
-        stall.eventId["startDate"]
+        stall.eventId["startDate"],
       ).toLocaleDateString();
 
       const message = `🎉 *Your Stall Confirmation is Ready!*
@@ -727,7 +727,7 @@ Thank you for choosing Eventsh! 🎊`;
       await this.otpService.sendMediaMessage(
         whatsappNumber,
         pdfPath,
-        `🎪 Your stall confirmation for ${stall.eventId["title"]}`
+        `🎪 Your stall confirmation for ${stall.eventId["title"]}`,
       );
 
       console.log("Stall ticket sent successfully via WhatsApp");
@@ -740,7 +740,7 @@ Thank you for choosing Eventsh! 🎊`;
   // ===== SAVE QR TO DISK (Same as tickets.service.ts) =====
   private async saveQRToDisk(
     base64Data: string,
-    stallId: string
+    stallId: string,
   ): Promise<string> {
     const qrDir = path.join(process.cwd(), "uploads", "stallQRs");
     const fileName = `qr_${stallId}.png`;
@@ -783,7 +783,7 @@ Thank you for choosing Eventsh! 🎊`;
       }
 
       const shopkeeper = await this.shopkeeperModel.findById(
-        stall.shopkeeperId
+        stall.shopkeeperId,
       );
 
       const now = new Date();
@@ -795,7 +795,7 @@ Thank you for choosing Eventsh! 🎊`;
         await stall.save();
 
         const shopkeeper = await this.shopkeeperModel.findById(
-          stall.shopkeeperId
+          stall.shopkeeperId,
         );
         const message =
           `✅ *Check-in Successful*\n\n` +
@@ -805,7 +805,7 @@ Thank you for choosing Eventsh! 🎊`;
 
         await this.otpService.sendWhatsAppMessage(
           shopkeeper.whatsappNumber,
-          message
+          message,
         );
 
         return {
@@ -835,10 +835,10 @@ Thank you for choosing Eventsh! 🎊`;
         await stall.save();
 
         const shopkeeper = await this.shopkeeperModel.findById(
-          stall.shopkeeperId
+          stall.shopkeeperId,
         );
         const duration = Math.floor(
-          (now.getTime() - stall.checkInTime.getTime()) / (1000 * 60)
+          (now.getTime() - stall.checkInTime.getTime()) / (1000 * 60),
         );
 
         const message =
@@ -850,7 +850,7 @@ Thank you for choosing Eventsh! 🎊`;
 
         await this.otpService.sendWhatsAppMessage(
           shopkeeper.whatsappNumber,
-          message
+          message,
         );
 
         return {
@@ -891,7 +891,7 @@ Thank you for choosing Eventsh! 🎊`;
       const stall = await this.stallModel
         .findById(stallId)
         .select(
-          "checkInTime checkOutTime hasCheckedIn hasCheckedOut shopkeeperId"
+          "checkInTime checkOutTime hasCheckedIn hasCheckedOut shopkeeperId",
         )
         .populate("shopkeeperId", "name email");
 
@@ -917,7 +917,7 @@ Thank you for choosing Eventsh! 🎊`;
   private async sendStallCreatedNotification(stall: any) {
     try {
       const shopkeeper = await this.shopkeeperModel.findById(
-        stall.shopkeeperId
+        stall.shopkeeperId,
       );
 
       const event: any = stall.eventId;
@@ -935,7 +935,7 @@ Thank you for choosing Eventsh! 🎊`;
 
       await this.otpService.sendWhatsAppMessage(
         shopkeeper.whatsappNumber,
-        message
+        message,
       );
     } catch (error) {
       this.logger.error("Error sending stall created notification:", error);
@@ -945,11 +945,11 @@ Thank you for choosing Eventsh! 🎊`;
   private async sendStatusUpdateNotification(
     stall: any,
     oldStatus: string,
-    newStatus: string
+    newStatus: string,
   ) {
     try {
       const shopkeeper = await this.shopkeeperModel.findById(
-        stall.shopkeeperId
+        stall.shopkeeperId,
       );
       const event: any = stall.eventId;
 
@@ -977,7 +977,7 @@ Thank you for choosing Eventsh! 🎊`;
       if (message) {
         await this.otpService.sendWhatsAppMessage(
           shopkeeper.whatsappNumber,
-          message
+          message,
         );
       }
     } catch (error) {
@@ -988,11 +988,11 @@ Thank you for choosing Eventsh! 🎊`;
   private async sendPaymentStatusNotification(
     stall: any,
     oldPaymentStatus: string,
-    newPaymentStatus: string
+    newPaymentStatus: string,
   ) {
     try {
       const shopkeeper = await this.shopkeeperModel.findById(
-        stall.shopkeeperId
+        stall.shopkeeperId,
       );
       const event: any = stall.eventId;
 
@@ -1028,7 +1028,7 @@ Thank you for choosing Eventsh! 🎊`;
       if (message) {
         await this.otpService.sendWhatsAppMessage(
           shopkeeper.whatsappNumber,
-          message
+          message,
         );
       }
     } catch (error) {
@@ -1043,7 +1043,7 @@ Thank you for choosing Eventsh! 🎊`;
         !Types.ObjectId.isValid(shopkeeperId)
       ) {
         throw new BadRequestException(
-          "Invalid event ID or shopkeeper ID format"
+          "Invalid event ID or shopkeeper ID format",
         );
       }
 
@@ -1101,7 +1101,7 @@ Thank you for choosing Eventsh! 🎊`;
 
   async updatePaymentStatus(
     stallId: string,
-    updateDto: UpdatePaymentStatusDto
+    updateDto: UpdatePaymentStatusDto,
   ) {
     try {
       if (!Types.ObjectId.isValid(stallId)) {
@@ -1131,7 +1131,7 @@ Thank you for choosing Eventsh! 🎊`;
           await this.sendPaymentStatusNotification(
             stall,
             oldPaymentStatus,
-            updateDto.paymentStatus
+            updateDto.paymentStatus,
           );
         }
         updateData.paymentDate = new Date();
@@ -1202,7 +1202,7 @@ Thank you for choosing Eventsh! 🎊`;
       await this.sendStatusUpdateNotification(
         updatedStall,
         oldStatus,
-        updateDto.status
+        updateDto.status,
       );
 
       return {
@@ -1226,7 +1226,7 @@ Thank you for choosing Eventsh! 🎊`;
         .populate([
           {
             path: "shopkeeperId",
-            select: "name email whatsAppNumber businessName",
+            select: "name email whatsAppNumber shopName",
           },
           { path: "eventId", select: "title location startDate" },
           { path: "organizerId", select: "name email organizationName" },
@@ -1256,7 +1256,6 @@ Thank you for choosing Eventsh! 🎊`;
       const stall = await this.stallModel.findById(id).populate([
         {
           path: "shopkeeperId",
-          select: "name email whatsAppNumber businessName",
         },
         {
           path: "eventId",
@@ -1285,20 +1284,20 @@ Thank you for choosing Eventsh! 🎊`;
 
   async findByEventId(eventId: string) {
     try {
-      if (!Types.ObjectId.isValid(eventId)) {
-        throw new BadRequestException("Invalid event ID format");
-      }
-
       const stalls = await this.stallModel
         .find({ eventId: new Types.ObjectId(eventId) })
         .populate([
           {
             path: "shopkeeperId",
-            select: "name email whatsAppNumber businessName",
+            select: "name email whatsAppNumber shopName",
+          },
+          {
+            path: "eventId",
+            select:
+              "title location startDate venueTables addOnItems venueConfig",
           },
           { path: "organizerId", select: "name email organizationName" },
-        ])
-        .sort({ createdAt: -1 });
+        ]);
 
       return {
         success: true,
@@ -1431,7 +1430,7 @@ Thank you for choosing Eventsh! 🎊`;
       });
 
       const bookedPositionIds = bookedStalls.flatMap((s) =>
-        (s.selectedTables || []).map((t) => t.positionId)
+        (s.selectedTables || []).map((t) => t.positionId),
       );
 
       const tablesWithStatus = event.venueTables.map((table) => ({
@@ -1465,7 +1464,7 @@ Thank you for choosing Eventsh! 🎊`;
   private async sendDepositReturnedNotification(stall: any) {
     try {
       const shopkeeper = await this.shopkeeperModel.findById(
-        stall.shopkeeperId
+        stall.shopkeeperId,
       );
       const event = await this.eventModel.findById(stall.eventId);
       const organizer = await this.organizerModel.findById(stall.organizerId);
@@ -1487,7 +1486,7 @@ Thank you for choosing Eventsh! 🎊`;
 
       await this.otpService.sendWhatsAppMessage(
         shopkeeper.whatsappNumber,
-        message
+        message,
       );
     } catch (error) {
       this.logger.error("Error sending deposit returned notification:", error);

@@ -50,7 +50,7 @@ const storage = diskStorage({
 @Controller("organizer-stores")
 export class OrganizerStoresController {
   constructor(
-    private readonly organizerStoresService: OrganizerStoresService
+    private readonly organizerStoresService: OrganizerStoresService,
   ) {}
 
   @Post("add-store-settings")
@@ -85,6 +85,7 @@ export class OrganizerStoresController {
   @Get("organizer-store-detail/:id")
   async findById(@Param("id") id: string) {
     try {
+      console.log("Calleddddd");
       return await this.organizerStoresService.findOneByorganizerId(id);
     } catch (error) {
       console.log(error);
@@ -109,7 +110,7 @@ export class OrganizerStoresController {
       [
         { name: "bannerImage", maxCount: 1 },
         { name: "heroBannerImage", maxCount: 1 },
-        { name: "aboutUsImage", maxCount: 1 ,}
+        { name: "aboutUsImage", maxCount: 1 },
       ],
       {
         storage,
@@ -121,8 +122,8 @@ export class OrganizerStoresController {
           }
         },
         limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-      }
-    )
+      },
+    ),
   )
   async update(
     @Req() req: any,
@@ -132,7 +133,7 @@ export class OrganizerStoresController {
       heroBannerImage?: Express.Multer.File[];
       aboutUsImage?: Express.Multer.File[];
     },
-    @Body() updateOrganizerStoreDto: UpdateOrganizerStoreDto
+    @Body() updateOrganizerStoreDto: UpdateOrganizerStoreDto,
   ) {
     try {
       const id = req.user.userId;
@@ -173,14 +174,13 @@ export class OrganizerStoresController {
         console.log("About Us image path:", aboutUsImagePath);
       }
 
-
       // Call service with parsed DTO and optional file paths
       return await this.organizerStoresService.update(
         id,
         updateOrganizerStoreDto,
         bannerImagePath, // undefined if no file
         heroBannerImagePath, // undefined if no file
-        aboutUsImagePath // undefined if no file
+        aboutUsImagePath, // undefined if no file
       );
     } catch (error) {
       console.log("Update error:", error);

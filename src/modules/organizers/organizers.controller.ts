@@ -59,7 +59,7 @@ export class OrganizersController {
   @Post("login")
   async verifyOTP(
     @Body("businessEmail") email: string,
-    @Body("otp") otp: string
+    @Body("otp") otp: string,
   ) {
     return this.organizersService.verifyOTP(email, otp);
   }
@@ -128,26 +128,30 @@ export class OrganizersController {
         if (!file.mimetype.startsWith("image/")) {
           return cb(
             new BadRequestException("Only image files are allowed"),
-            false
+            false,
           );
         }
         cb(null, true);
       },
       limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
-    })
+    }),
   )
   async updateProfile(
     @Param("id") id: string,
     @UploadedFile() paymentFile: Express.Multer.File,
-    @Body() body: UpdateOrganizerDto
+    @Body() body: UpdateOrganizerDto,
   ) {
-    const paymentQrPublicUrl = paymentFile?.filename
-      ? `/uploads/organizerPayments/${paymentFile.filename}`
-      : null;
+    try {
+      const paymentQrPublicUrl = paymentFile?.filename
+        ? `/uploads/organizerPayments/${paymentFile.filename}`
+        : null;
 
-    console.log(paymentQrPublicUrl, "-------------------");
+      console.log(paymentQrPublicUrl, "-------------------");
 
-    return this.organizersService.updateProfile(id, body, paymentQrPublicUrl);
+      return this.organizersService.updateProfile(id, body, paymentQrPublicUrl);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   @Get("organizer/:slug")
@@ -162,7 +166,7 @@ export class OrganizersController {
   @Patch("add-subscription-plan-for-organizer/:id/plan/:planSelected")
   async addSubscriptionPlan(
     @Param("id") id: string,
-    @Param("planSelected") planSelected: string
+    @Param("planSelected") planSelected: string,
   ) {
     try {
       return await this.organizersService.addSubscriptionPlan(id, planSelected);

@@ -1,9 +1,9 @@
 import {
-  IsEmail,
   IsString,
-  MinLength,
-  IsOptional,
   IsNotEmpty,
+  IsOptional,
+  IsEmail,
+  IsBoolean,
 } from "class-validator";
 
 export class CreateOrganizerDto {
@@ -11,31 +11,51 @@ export class CreateOrganizerDto {
   @IsNotEmpty()
   name: string;
 
+  @IsString()
+  @IsNotEmpty()
+  organizationName: string; // Matches 'shopName' in Shopkeeper
+
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
   @IsString()
   @IsNotEmpty()
-  organizationName: string;
+  phone: string;
 
   @IsString()
   @IsNotEmpty()
-  businessEmail: string; // New field from frontend
+  address: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @IsString()
   @IsNotEmpty()
-  whatsAppNumber: string; // New field from frontend
+  whatsAppNumber: string; // CamelCase to match organizer.schema.ts
 
-  @IsOptional()
-  @IsString()
-  address?: string;
+  @IsEmail()
+  @IsNotEmpty()
+  businessEmail: string;
 
-  @IsOptional()
   @IsString()
-  phoneNumber: string;
+  @IsNotEmpty()
+  businessCategory: string;
 
-  @IsOptional()
   @IsString()
-  bio?: string;
+  @IsOptional()
+  GSTNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  UENNumber?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  country: string;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  hasDocVerification: boolean;
 }
