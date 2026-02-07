@@ -10,7 +10,7 @@ import { OrganizerStore } from "./entities/organizer-store.entity";
 export class OrganizerStoresService {
   constructor(
     @InjectModel(OrganizerStore.name)
-    private organizerStoreModel: Model<OrganizerStore>
+    private organizerStoreModel: Model<OrganizerStore>,
   ) {}
 
   async create(createOrganizerStoreDto: CreateOrganizerStoreDto) {
@@ -61,7 +61,8 @@ export class OrganizerStoresService {
             fontFamily: createOrganizerStoreDto.design.fontFamily,
             layout: createOrganizerStoreDto.design.layout,
             bannerImage: createOrganizerStoreDto.design.bannerImage ?? "",
-            heroBannerImage: createOrganizerStoreDto.design.heroBannerImage ?? "",
+            heroBannerImage:
+              createOrganizerStoreDto.design.heroBannerImage ?? "",
             aboutUsImage: createOrganizerStoreDto.design.aboutUsImage ?? "",
             showBanner: createOrganizerStoreDto.design.showBanner,
             bannerHeight: createOrganizerStoreDto.design.bannerHeight,
@@ -169,7 +170,9 @@ export class OrganizerStoresService {
       if (!shopfrontStore) {
         return { message: "Shopfront store not found", data: null };
       }
-      return { message: "Shopfront store found", data: shopfrontStore };
+
+      console.log(shopfrontStore, "OrganizerFront");
+      return { message: "Organizer store found", data: shopfrontStore };
     } catch (error) {
       console.error("Error finding shopfront store by organizerId:", error);
       throw error;
@@ -181,7 +184,7 @@ export class OrganizerStoresService {
     updateOrganizerDto: UpdateOrganizerStoreDto,
     bannerImagePath?: string,
     heroBannerImagePath?: string,
-    aboutUsImagePath?: string
+    aboutUsImagePath?: string,
   ) {
     try {
       const existingStore = await this.organizerStoreModel
@@ -290,7 +293,7 @@ export class OrganizerStoresService {
             bannerImagePath ??
             updateOrganizerDto.design.bannerImage ??
             existingStore.settings.design.bannerImage,
-          aboutUsImage: 
+          aboutUsImage:
             aboutUsImagePath ??
             updateOrganizerDto.design.aboutUsImage ??
             existingStore.settings.design.aboutUsImage,
@@ -353,7 +356,7 @@ export class OrganizerStoresService {
         .findOneAndUpdate(
           { organizerId },
           { $set: updateData },
-          { new: true, runValidators: true }
+          { new: true, runValidators: true },
         )
         .exec();
 
