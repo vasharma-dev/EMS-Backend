@@ -85,9 +85,13 @@ export class OrdersController {
   }
 
   @Get(":id/receipt")
-  async downloadReceipt(@Param("id") id: string, @Res() res: Response) {
+  async downloadReceipt(
+    @Param("id") id: string,
+    @Query("type") type: string,
+    @Res() res: Response,
+  ) {
     try {
-      const receipt = await this.ordersService.generateReceipt(id);
+      const receipt = await this.ordersService.generateReceipt(id, type);
 
       res.set({
         "Content-Type": "application/pdf",

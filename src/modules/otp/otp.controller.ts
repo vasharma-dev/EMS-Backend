@@ -29,7 +29,7 @@ export class OtpController {
 
   @Post("verify-business-email-otp")
   async verifyOtp(
-    @Body() body: { businessEmail: string; role: string; otp: string }
+    @Body() body: { businessEmail: string; role: string; otp: string },
   ) {
     await this.otpService.verifyOtp(body.businessEmail, body.role, body.otp);
     return { message: "OTP verified" };
@@ -59,31 +59,38 @@ export class OtpController {
   // WhatsApp OTP
   @Post("send-whatsapp-otp")
   async sendWhatsAppOtp(
-    @Body() body: { whatsappNumber: string; role: string }
+    @Body() body: { whatsappNumber: string; role: string },
   ) {
     return this.otpService.sendWhatsAppOtp(body.whatsappNumber, body.role);
   }
 
   @Post("verify-whatsapp-otp")
   async verifyWhatsAppOtp(
-    @Body() body: { whatsappNumber: string; role: string; otp: string }
+    @Body() body: { whatsappNumber: string; role: string; otp: string },
   ) {
     return this.otpService.verifyWhatsAppOtp(
       body.whatsappNumber,
       body.role,
-      body.otp
+      body.otp,
     );
   }
 
   @Post("verify-chat-otp")
   async verifyChatOTP(
-    @Body() body: { whatsappNumber: string; role: string; otp: string }
+    @Body()
+    body: {
+      whatsappNumber: string;
+      role: string;
+      otp: string;
+      shopId?: string;
+    },
   ) {
     try {
       return this.otpService.VerifyWhatsAppOtp(
         body.whatsappNumber,
         body.role,
-        body.otp
+        body.otp,
+        body.shopId,
       );
     } catch (error) {
       throw error;

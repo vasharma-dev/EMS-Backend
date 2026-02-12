@@ -353,14 +353,22 @@ export class OtpService implements OnModuleInit {
     }
   }
 
-  async VerifyWhatsAppOtp(whatsappNumber: string, role: string, otp: string) {
+  async VerifyWhatsAppOtp(
+    whatsappNumber: string,
+    role: string,
+    otp: string,
+    shopId?: string,
+  ) {
     const digits = this.normalizePhone(whatsappNumber);
     const identifier = digits;
     const channel = "whatsapp";
 
     const record = await this.otpModel.findOne({ channel, role, identifier });
+
+    // 1. Validate OTP
     if (!record || record.expiresAt < new Date() || record.otp !== otp) {
       if (record) {
+        // Logic to delete after max attempts...
         if (record.attempts + 1 >= this.MAX_ATTEMPTS) {
           await this.otpModel.deleteOne({ channel, role, identifier });
         } else {
@@ -371,28 +379,37 @@ export class OtpService implements OnModuleInit {
       throw new UnauthorizedException("Invalid or expired OTP");
     }
 
-    let token = null;
+    let result = null;
 
-    if (record.role === "shopkeeper") {
-      const shopkeeper =
-        await this.shopkeeperService.findByWhatsAppNumber(whatsappNumber);
-      if (!shopkeeper) {
-        throw new NotFoundException("Token not found");
+    if (role === "shopkeeper") {
+      // 2. Find Shopkeeper (Pass shopId if available)
+      result = await this.shopkeeperService.findByWhatsAppNumber(
+        whatsappNumber,
+        shopId,
+      );
+
+      if (!result) throw new NotFoundException("User not found");
+
+      // 3. CRITICAL: If selection is needed, RETURN EARLY (Do not delete OTP yet)
+      if (result.requiresSelection) {
+        return {
+          message: "Multiple accounts found",
+          requiresSelection: true,
+          shops: result.shops, // Array of { id, shopName }
+        };
       }
-
-      token = shopkeeper.token;
     } else {
+      // Organizer logic...
       const organizer =
         await this.organizerService.findByWhatsAppNumber(whatsappNumber);
-      if (!organizer) {
-        throw new NotFoundException("Token Not Found");
-      }
-
-      token = organizer.token;
+      if (!organizer) throw new NotFoundException("Token Not Found");
+      result = { token: organizer.token };
     }
 
+    // 4. Success: Delete OTP only now
     await this.otpModel.deleteOne({ channel, role, identifier });
-    return { message: "OTP verified", data: token };
+
+    return { message: "OTP verified", data: result.token };
   }
 
   // =========================

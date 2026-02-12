@@ -37,10 +37,6 @@ class AddressDto {
   state: string;
 
   zip: string;
-
-  @IsOptional()
-  @IsString()
-  instructions?: string;
 }
 
 class OrderItemDto {
@@ -114,6 +110,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
+
+  @IsOptional()
+  @IsString()
+  instructions?: string;
 
   // new field for WhatsApp-based identity
   @IsString()

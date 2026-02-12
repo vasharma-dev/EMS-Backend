@@ -729,22 +729,45 @@ export class ShopkeepersService {
     };
   }
 
-  async findByWhatsAppNumber(whatsAppNumber: string) {
+  async findByWhatsAppNumber(whatsAppNumber: string, targetShopId?: string) {
     try {
-      console.log(whatsAppNumber);
-      const shopkeeper = await this.shopModel.findOne({
+      const shopkeepers = await this.shopModel.find({
         whatsappNumber: whatsAppNumber,
       });
-      console.log(shopkeeper);
-      if (!shopkeeper) {
-        throw new NotFoundException("Shopkeeper Not Found");
+
+      if (!shopkeepers || shopkeepers.length === 0) return null;
+
+      let targetShopkeeper;
+
+      // 1. Auto-select if only one
+      if (shopkeepers.length === 1) {
+        targetShopkeeper = shopkeepers[0];
+      }
+      // 2. Select specific if ID provided
+      else if (targetShopId) {
+        targetShopkeeper = shopkeepers.find(
+          (s) => s._id.toString() === targetShopId, // Convert ObjectId to string for comparison
+        );
+        if (!targetShopkeeper)
+          throw new NotFoundException("Selected shop not found.");
+      }
+      // 3. Return List for Selection
+      else {
+        return {
+          requiresSelection: true,
+          shops: shopkeepers.map((s) => ({
+            id: s._id.toString(), // CRITICAL: Convert to string
+            shopName: s.shopName,
+          })),
+        };
       }
 
+      // 4. Generate Token
       const payload = {
-        name: shopkeeper.name,
-        email: shopkeeper.email,
-        sub: shopkeeper._id,
-        country: shopkeeper.country,
+        name: targetShopkeeper.name,
+        email: targetShopkeeper.email,
+        sub: targetShopkeeper._id.toString(),
+        country: targetShopkeeper.country,
         roles: ["shopkeeper"],
       };
 
@@ -755,7 +778,7 @@ export class ShopkeepersService {
 
       return { message: "Token found", token: token };
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

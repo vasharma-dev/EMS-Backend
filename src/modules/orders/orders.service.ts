@@ -143,7 +143,10 @@ export class OrdersService {
     return `https://wa.me/${cleaned}`;
   }
 
-  async generateReceipt(orderId: string): Promise<Buffer> {
+  async generateReceipt(
+    orderId: string,
+    receiptType?: string,
+  ): Promise<Buffer> {
     const order = await this.orderModel
       .findOne({ _id: orderId })
       .populate("userId")
@@ -166,6 +169,8 @@ export class OrdersService {
     });
 
     const primaryColor = shopkeeperStoreDetail?.settings?.design?.primaryColor;
+
+    const formatToUse = receiptType || "A4";
 
     if (!shopkeeperDetail) throw new NotFoundException("Shopkeeper Not Found");
     if (!customerDetail) throw new NotFoundException("Customer Not Found");
@@ -236,7 +241,7 @@ export class OrdersService {
 
     return new Promise(async (resolve, reject) => {
       try {
-        if (shopkeeperDetail.receiptType === "58MM") {
+        if (formatToUse === "58MM") {
           const PDFDocument = (PDFKit as any).default || PDFKit;
 
           // ========== CALCULATE DYNAMIC HEIGHT ==========
@@ -660,7 +665,7 @@ export class OrdersService {
 
           doc.end();
         }
-        if (shopkeeperDetail.receiptType === "A4") {
+        if (formatToUse === "A4") {
           const secondaryColor = "#475569";
           const borderColor = "#E2E8F0";
           const textColor = "#1E293B";
@@ -1634,10 +1639,10 @@ export class OrdersService {
         format: 0,
       });
 
-      if (order.deliveryAddress.instructions) {
+      if (order.instructions) {
         printData.push({
           type: 0,
-          content: `Instructions: ${order.deliveryAddress.instructions}`,
+          content: `Instructions: ${order.instructions}`,
           bold: 0,
           align: 0,
           format: 0,
@@ -1905,10 +1910,10 @@ export class OrdersService {
           format: 4,
         });
 
-        if (order.deliveryAddress.instructions) {
+        if (order.instructions) {
           printData.push({
             type: 0,
-            content: `Notes: ${order.deliveryAddress.instructions}`,
+            content: `Notes: ${order.instructions}`,
             bold: 0,
             align: 0,
             format: 4,

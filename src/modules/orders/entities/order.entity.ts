@@ -45,8 +45,10 @@ export class Order extends Document {
     city: string;
     state: string;
     zip: string;
-    instructions?: string;
   };
+
+  @Prop({ type: String, required: false })
+  instructions?: string;
 
   @Prop({ type: Date, required: false })
   pickupDate?: Date;
