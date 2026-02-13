@@ -13,6 +13,12 @@ class Variant {
   @Prop({ required: true })
   price: number;
 
+  @Prop({ required: false })
+  measurement?: string;
+
+  @Prop({ required: false })
+  description?: string;
+
   @Prop()
   isDiscounted?: boolean;
 
@@ -68,6 +74,9 @@ export class Product {
 
   @Prop({ required: true })
   price: number;
+
+  @Prop({ required: false })
+  measurement?: string;
 
   @Prop()
   isDiscounted?: boolean;

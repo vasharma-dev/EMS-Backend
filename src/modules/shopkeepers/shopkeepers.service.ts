@@ -758,6 +758,7 @@ export class ShopkeepersService {
           shops: shopkeepers.map((s) => ({
             id: s._id.toString(), // CRITICAL: Convert to string
             shopName: s.shopName,
+            approved: s.approved,
           })),
         };
       }

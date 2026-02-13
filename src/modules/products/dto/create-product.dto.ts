@@ -37,6 +37,14 @@ export class ProductVariantDto {
   @IsOptional()
   discountedPrice?: number;
 
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  measurement?: string;
+
   @IsOptional()
   @IsNumber()
   compareAtPrice?: number;
@@ -137,6 +145,10 @@ export class CreateProductDto {
   @IsNumber()
   @IsNotEmpty()
   price: number;
+
+  @IsOptional()
+  @IsString()
+  measurement?: string;
 
   @IsOptional()
   @IsBoolean()

@@ -29,6 +29,10 @@ export class UpdateProductVariantDto {
   price?: number;
 
   @IsOptional()
+  @IsString()
+  measurement?: string;
+
+  @IsOptional()
   @IsBoolean()
   isDiscounted?: boolean;
 
@@ -128,6 +132,10 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  measurement?: string;
 
   @IsOptional()
   @IsBoolean()
