@@ -22,6 +22,7 @@ import { Otp } from "../otp/entities/otp.entity";
 import { Types } from "mongoose";
 import Razorpay from "razorpay";
 import { CreateRazorpayLinkedAccountDto } from "./dto/razorpay.dto";
+import { UpdateShopkeeperDto } from "./dto/updateShopkeeper.dto";
 
 @Injectable()
 export class ShopkeepersService {
@@ -47,6 +48,110 @@ export class ShopkeepersService {
   async create(data: Partial<Shopkeeper>) {
     const created = new this.shopModel(data);
     return created.save();
+  }
+
+  async createShopkeeperByOrganizer(
+    data: CreateShopkeeperDto,
+    organizerId: string,
+  ) {
+    try {
+      const shopkeeper = await this.shopModel.findOne({
+        whatsappNumber: data.whatsappNumber,
+        email: data?.email,
+      });
+
+      if (shopkeeper) {
+        throw new BadRequestException("User Already Exists");
+      }
+
+      const created = new this.shopModel({
+        name: data.name,
+        email: data.email,
+        country: data.country,
+        shopName: data.shopName,
+        provider: "Organizer",
+        providerId: organizerId,
+        whatsappNumber: data.whatsappNumber,
+        phone: data.phone,
+        address: data.address,
+        approved: true,
+        businessCategory: data.businessCategory,
+        businessEmail: data.businessEmail,
+      });
+
+      const saved = await created.save();
+      return { message: "User created successfully", data: saved };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateShopkeeperByOrganizer(
+    shopkeeperId: string,
+    data: UpdateShopkeeperDto,
+    organizerId: string,
+  ) {
+    try {
+      // 1. Check if user exists and belongs to this shopkeeper
+      const existingUser = await this.shopModel.findOne({
+        _id: shopkeeperId,
+        provider: "Organizer",
+        providerId: organizerId,
+      });
+
+      if (!existingUser) {
+        throw new BadRequestException("Shopkeeper not found or access denied");
+      }
+
+      // 2. Check for duplicate WhatsApp / Email (excluding current user)
+      // const duplicateUser = await this.userModel.findOne({
+      //   _id: { $ne: userId },
+      //   $or: [{ whatsAppNumber: data.whatsAppNumber }, { email: data.email }],
+      // });
+
+      // if (duplicateUser) {
+      //   throw new BadRequestException(
+      //     "Another user already exists with this WhatsApp number or email",
+      //   );
+      // }
+
+      // 3. Update fields
+      existingUser.name = data.name;
+      existingUser.shopName = data.shopName;
+      existingUser.country = data.country;
+      existingUser.email = data.email;
+      existingUser.whatsappNumber = data.whatsappNumber;
+      existingUser.phone = data.phone;
+      existingUser.address = data.address;
+      existingUser.businessCategory = data.businessCategory;
+      existingUser.businessEmail = data.businessEmail;
+
+      const updatedUser = await existingUser.save();
+
+      return {
+        message: "Shopkeeper updated successfully",
+        data: updatedUser,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async fetchShopkeeperByOrganizerId(organizerId: string) {
+    try {
+      const shopkeeper = await this.shopModel.find({
+        provider: "Organizer",
+        providerId: organizerId,
+      });
+
+      if (!shopkeeper) {
+        throw new NotFoundException("Shopkeeper not found");
+      }
+
+      return { message: "Shopkeeper fetched successfully", data: shopkeeper };
+    } catch (error) {
+      throw error;
+    }
   }
 
   async createRazorpayLinkedAccount(

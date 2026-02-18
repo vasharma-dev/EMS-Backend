@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsMongoId, IsEmail } from "class-validator";
+import {
+  IsString,
+  IsOptional,
+  IsMongoId,
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+} from "class-validator";
 import { Types } from "mongoose";
 
 /**
@@ -71,4 +78,44 @@ export class CreateStallDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsNotEmpty()
+  noOfOperators: string;
+
+  @IsNotEmpty()
+  @IsString()
+  brandName: string;
+  
+    @IsNotEmpty()
+    @IsString()
+    nameOfApplicant: string;
+  
+    @IsOptional()
+    @IsString()
+    registrationImage: string;
+  
+    @IsOptional()
+    @IsString()
+    businessOwnerNationality: string;
+  
+    @IsOptional()
+    @IsString()
+    companyLogo?: string;
+  
+    @IsOptional()
+    @IsString()
+    faceBookLink?: string;
+  
+    @IsOptional()
+    @IsString()
+    instagramLink?: string;
+  
+    @IsOptional()
+    @IsString()
+    productDescription?: string;
+  
+    @IsOptional()
+    @IsString()
+    productImage?: string[];
+  
 }

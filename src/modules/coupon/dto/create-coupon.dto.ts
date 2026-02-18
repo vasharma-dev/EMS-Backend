@@ -55,6 +55,10 @@ export class CreateCouponDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @IsOptional()
+  @IsString()
+  eventId: string;
+
   @IsEnum(["SHOPKEEPER", "ORGANIZER", "GLOBAL"])
   appliesTo: "SHOPKEEPER" | "ORGANIZER" | "GLOBAL";
 }

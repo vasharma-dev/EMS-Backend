@@ -155,6 +155,12 @@ export class Shopkeeper {
   @Prop({ default: false })
   instagramQR: boolean;
 
+  @Prop({default: "self"})
+  provider: string;
+
+  @Prop({default: null})
+  providerId: string;
+
   @Prop()
   whatsAppQRNumber: string;
 

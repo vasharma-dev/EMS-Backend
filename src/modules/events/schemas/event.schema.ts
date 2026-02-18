@@ -160,6 +160,7 @@ export class Event {
   @Prop({ type: Array, default: [] })
   venueTables: {
     venueConfigId: string;
+    tableName: string;
     positionId: string;
     id: string;
     name: string;

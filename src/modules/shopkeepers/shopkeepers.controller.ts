@@ -20,6 +20,7 @@ import { diskStorage } from "multer";
 import { extname } from "path";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { CreateRazorpayLinkedAccountDto } from "./dto/razorpay.dto";
+import { UpdateShopkeeperDto } from "./dto/updateShopkeeper.dto";
 
 // DTO for OTP requests
 class RequestOTPDto {
@@ -95,12 +96,12 @@ export class ShopkeepersController {
   @UseGuards(AuthGuard("jwt"))
   async setupRazorpay(
     @Body() dto: CreateRazorpayLinkedAccountDto,
-    @Req() req: any
+    @Req() req: any,
   ) {
     const shopkeeperId = req.user.sub;
     return this.shopkeepersService.createRazorpayLinkedAccount(
       shopkeeperId,
-      dto
+      dto,
     );
   }
 
@@ -165,18 +166,18 @@ export class ShopkeepersController {
         if (!file.mimetype.startsWith("image/")) {
           return cb(
             new BadRequestException("Only image files are allowed"),
-            false
+            false,
           );
         }
         cb(null, true);
       },
       limits: { fileSize: 5 * 1024 * 1024 },
-    })
+    }),
   )
   async updateProfile(
     @Param("id") id: string,
     @UploadedFile() paymentURL: Express.Multer.File,
-    @Body() body: any // or UpdateShopkeeperDto if you bind DTO validation
+    @Body() body: any, // or UpdateShopkeeperDto if you bind DTO validation
   ) {
     // Construct public URL if a file was uploaded.
     // main.ts serves /uploads, so this becomes accessible at http://localhost:3000/uploads/...
@@ -189,10 +190,53 @@ export class ShopkeepersController {
 
   @Get("profile/:whatsAppNumber")
   async getProfileByWhatsAppNumber(
-    @Param("whatsAppNumber") whatsAppNumber: string
+    @Param("whatsAppNumber") whatsAppNumber: string,
   ) {
     try {
       return await this.shopkeepersService.whatsAppNumberExists(whatsAppNumber);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post("create-shopkeeper-by-organizer/:organizerId")
+  async createUserByOrganizer(
+    @Body() createUserDto: CreateShopkeeperDto,
+    @Param("organizerId") organizerId: string,
+  ) {
+    try {
+      return await this.shopkeepersService.createShopkeeperByOrganizer(
+        createUserDto,
+        organizerId,
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Patch("update-shopkeeper-by-organizer/:organizerId/:shopkeeperId")
+  async updateUserByOrganizer(
+    @Param("organizerId") organizerId: string,
+    @Param("shopkeeperId") shopkeeperId: string,
+    @Body() updateUserDto: UpdateShopkeeperDto,
+  ) {
+    try {
+      return await this.shopkeepersService.updateShopkeeperByOrganizer(
+        shopkeeperId,
+        updateUserDto,
+        organizerId,
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get("fetch-shopkeepers-by-organizer/:organizerId")
+  async fetchUsersByorganizerId(@Param("organizerId") organizerId: string) {
+    try {
+      return await this.shopkeepersService.fetchShopkeeperByOrganizerId(
+        organizerId,
+      );
     } catch (error) {
       throw error;
     }

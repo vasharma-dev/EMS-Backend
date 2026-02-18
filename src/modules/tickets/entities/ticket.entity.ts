@@ -73,6 +73,9 @@ export class Ticket {
   @Prop({ type: Date, required: true })
   purchaseDate: Date;
 
+  @Prop()
+  coupon?: string;
+
   @Prop({ default: false })
   isUsed: boolean;
 

@@ -17,6 +17,8 @@ import { UpdatePaymentStatusDto } from "./dto/paymentStatus.dto";
 import { UpdateStatusDto } from "./dto/updateStatus.dto";
 import { Stall, StallDocument } from "./entities/stall.entity";
 import { OtpService } from "../otp/otp.service";
+import { CouponService } from "../coupon/coupon.service";
+import { CreateCouponDto } from "../coupon/dto/create-coupon.dto";
 
 @Injectable()
 export class StallsService {
@@ -28,6 +30,7 @@ export class StallsService {
     @InjectModel("Event") private eventModel: Model<any>,
     @InjectModel("Organizer") private organizerModel: Model<any>,
     private otpService: OtpService,
+    private couponService: CouponService,
   ) {
     // Ensure upload directory exists
     const qrDir = path.join(process.cwd(), "uploads", "stallQRs");
@@ -136,7 +139,17 @@ export class StallsService {
         paidAmount: 0,
         remainingAmount: 0,
         requestDate: new Date(),
+        noOfOperators: createStallDto.noOfOperators,
         notes: createStallDto.notes,
+        brandName: createStallDto.brandName,
+        nameOfApplicant: createStallDto.nameOfApplicant,
+        registrationImage: createStallDto.registrationImage,
+        businessOwnerNationality: createStallDto.businessOwnerNationality,
+        companyLogo: createStallDto.companyLogo,
+        faceBookLink: createStallDto.faceBookLink,
+        instagramLink: createStallDto.instagramLink,
+        productDescription: createStallDto.productDescription,
+        productImage: createStallDto.productImage,
       });
 
       const populatedStall = await newStall.populate([
@@ -274,6 +287,7 @@ export class StallsService {
             selectedAddOns: selectDto.selectedAddOns || [],
             tablesTotal,
             depositTotal,
+            couponCodeApplied: selectDto.couponCodeApplied || null,
             addOnsTotal,
             grandTotal,
             remainingAmount: grandTotal,
@@ -413,7 +427,33 @@ export class StallsService {
       );
       const event: any = stall.eventId;
 
-      // Generate PDF with QR code
+      const eventDetail = await this.eventModel.findById(stall.eventId);
+
+      const couponName = (
+        eventDetail.title +
+        shopkeeper.shopName +
+        stall.noOfOperators
+      ).replace(/\s+/g, "");
+
+      const couponPayload: CreateCouponDto = {
+        organizerId: String(stall.organizerId._id),
+        code: couponName,
+        discountType: "PERCENTAGE",
+        discountPercentage: 100,
+        minOrderAmount: eventDetail.ticketPrice,
+        maxUsage: Number(stall.noOfOperators),
+        expiryDate: eventDetail.startDate,
+        isActive: true,
+        eventId: String(stall.eventId._id),
+        appliesTo: "ORGANIZER",
+      };
+
+      const coupon = await this.couponService.create(couponPayload);
+
+      console.log(coupon);
+
+      stall.couponCodeAssigned = coupon.code;
+
       const pdfBuffer = await this.generateStallTicketPDF(stall, qrCodeBase64);
 
       const pdfDir = path.join(process.cwd(), "uploads", "stallTickets");
@@ -434,6 +474,7 @@ export class StallsService {
         stall,
         qrCodeBase64,
         shopkeeper.whatsappNumber,
+        coupon,
       );
 
       this.logger.log(
@@ -453,7 +494,10 @@ export class StallsService {
   }
 
   // ===== STALL TICKET HTML GENERATION (Adapted from tickets.service.ts) =====
-  private generateStallTicketHTML(stall: Stall, qrBase64: string): string {
+  private async generateStallTicketHTML(
+    stall: Stall,
+    qrBase64: string,
+  ): Promise<string> {
     const eventDate = new Date(stall.eventId["startDate"]).toLocaleDateString();
 
     return `
@@ -462,80 +506,116 @@ export class StallsService {
       <head>
         <style>
           body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 10px 15px;
-  background-color: #f5f5f5;
-  font-size: 10px; /* Reduced font size */
-}
-.container {
-  max-width: 600px;
-  margin: 0 auto;
-  background-color: white;
-  padding: 15px 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-.header h1 {
-  font-size: 22px;
-  color: #007bff;
-}
-.header p {
-  font-size: 12px;
-  color: #666;
-}
-.event-title {
-  font-size: 20px;
-  margin: 15px 0;
-}
-.details-section {
-  margin: 15px 0;
-}
-.details-section h3 {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
-.detail-row {
-  padding: 5px 0;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-}
-.table-item, .addon-item {
-  padding: 6px;
-  margin: 3px 0;
-  font-size: 9px;
-}
-.qr-label {
-  font-size: 10px;
-  color: #666;
-  text-align: center;
-  margin-bottom: 10px;
-}
-.qr-section img {
-  width: 180px;
-  height: 180px;
-  margin: 12px 0;
-  display: block;
-  margin: 0 auto;
-  align-self: center;
-}
-.warning {
-  font-size: 10px;
-  padding: 10px;
-  margin: 15px 0;
-}
-.footer {
-  font-size: 9px;
-  padding-top: 10px;
-  border-top: 1px solid #eee;
-  color: #999;
-  text-align: center;
-}
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            font-size: 10px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+          }
+          .header h1 {
+            font-size: 22px;
+            color: #007bff;
+            margin-bottom: 5px;
+          }
+          .header p {
+            font-size: 12px;
+            color: #666;
+            margin-top: 0;
+          }
+          .event-title {
+            font-size: 20px;
+            margin: 15px 0;
+            font-weight: bold;
+          }
+          .details-section {
+            margin: 15px 0;
+          }
+          .details-section h3 {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #007bff;
+            display: inline-block;
+          }
+          .detail-row {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+          }
+          .table-item, .addon-item {
+            padding: 6px;
+            margin: 3px 0;
+            font-size: 9px;
+            background: #fafafa;
+            border-radius: 4px;
+          }
+          /* Coupon Section Styling */
+          .coupon-box {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px dashed #28a745;
+            background-color: #f8fff9;
+            border-radius: 8px;
+            text-align: center;
+          }
+          .coupon-code {
+            font-size: 12px;
+            font-weight: bold;
+            color: #28a745;
+            letter-spacing: 2px;
+            margin: 5px 0;
+          }
+          .coupon-msg {
+            font-size: 9px;
+            color: #155724;
+            line-height: 1.4;
+          }
 
+          .qr-label {
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 10px;
+          }
+          .qr-head {
+            font-weight: bold;
+            font-size: 15px;
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 5px;
+          }
+          .qr-section img {
+            width: 180px;
+            height: 180px;
+            display: block;
+            margin: 0 auto;
+          }
+          .warning {
+            font-size: 10px;
+            padding: 10px;
+            margin: 15px 0;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+          }
+          .footer {
+            font-size: 9px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            color: #999;
+            text-align: center;
+          }
         </style>
       </head>
       <body>
@@ -577,7 +657,7 @@ export class StallsService {
                 (t) => `
               <div class="table-item">
                 <strong>${t.tableName}</strong> (${t.tableType})<br>
-                Venue Name: ${t.layoutName}</br>
+                Venue Name: ${t.layoutName}<br>
                 Price: $${t.price.toFixed(2)} | Deposit: $${t.depositAmount.toFixed(2)}
               </div>
             `,
@@ -626,16 +706,29 @@ export class StallsService {
           </div>
 
           <div class="qr-section">
+            <p class="qr-head">Your Stall QR Code</p>
             <p class="qr-label">Scan at Event Entrance</p>
             <img src="${qrBase64}" alt="Stall Entry QR Code">
           </div>
 
           <div class="warning">
-            ⚠️ <strong>Important:</strong> This QR code can ONLY be scanned using the official Eventsh app. 
-            Normal camera scanners will not work. 
-            Show this QR code at the venue entrance for check-in and check-out.
-            The Deposit will be Returned after the Event is Finished.
+            ⚠️ <strong>Important:</strong> Use Official EventSH App to scan QR code, to Check-In and Check-Out.
           </div>
+
+          ${
+            stall.couponCodeAssigned
+              ? `
+          <div class="coupon-box">
+             <div class="coupon-msg">🎟️ <strong>Exhibitor Complimentary Entry</strong></div>
+             <div class="coupon-code">${stall.couponCodeAssigned}</div>
+             <div class="coupon-msg">
+               This coupon is valid for <strong>${stall.noOfOperators} Operator(s)</strong>.<br>
+               Use this code at the time of Purchasing ticket to waive the entry price for your exhibitors/operators.
+             </div>
+          </div>
+          `
+              : ""
+          }
 
           <div class="footer">
             © ${new Date().getFullYear()} Eventsh. All rights reserved.
@@ -650,8 +743,9 @@ export class StallsService {
   private async generateStallTicketPDF(
     stall: Stall,
     qrBase64: string,
+    coupon?: any,
   ): Promise<Buffer> {
-    const html = this.generateStallTicketHTML(stall, qrBase64);
+    const html = await this.generateStallTicketHTML(stall, qrBase64);
 
     const browser = await puppeteer.launch({
       headless: true,
@@ -659,7 +753,7 @@ export class StallsService {
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(await html, { waitUntil: "networkidle0" });
 
     const uint8arrayBuffer = await page.pdf({
       format: "A4",
@@ -678,11 +772,16 @@ export class StallsService {
     stall: Stall,
     qrBase64: string,
     whatsappNumber: string,
+    coupon?: any,
   ): Promise<void> {
     try {
       console.log("Sending stall ticket via WhatsApp");
 
-      const pdfBuffer = await this.generateStallTicketPDF(stall, qrBase64);
+      const pdfBuffer = await this.generateStallTicketPDF(
+        stall,
+        qrBase64,
+        coupon,
+      );
       const pdfDir = path.join(process.cwd(), "uploads", "stallTickets");
 
       if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
@@ -1055,13 +1154,11 @@ Thank you for choosing Eventsh! 🎊`;
         .populate([
           {
             path: "shopkeeperId",
-            select: "name email whatsAppNumber businessName",
           },
           {
             path: "eventId",
-            select: "title location startDate venueTables addOnItems",
           },
-          { path: "organizerId", select: "name email organizationName" },
+          { path: "organizerId" },
         ])
         .sort({ createdAt: -1 }); // Get most recent request
 
@@ -1259,7 +1356,6 @@ Thank you for choosing Eventsh! 🎊`;
         },
         {
           path: "eventId",
-          select: "title location startDate venueTables addOnItems venueConfig",
         },
         { path: "organizerId", select: "name email organizationName" },
       ]);
@@ -1324,7 +1420,6 @@ Thank you for choosing Eventsh! 🎊`;
         .populate([
           {
             path: "shopkeeperId",
-            select: "name email whatsappNumber shopName businessEmail phone",
           },
           { path: "eventId", select: "title location startDate endDate" },
         ])
@@ -1517,6 +1612,92 @@ Thank you for choosing Eventsh! 🎊`;
         message: error.message,
         data: null,
       };
+    }
+  }
+
+  // ============ DOWNLOAD STALL TICKET ============
+  async downloadStallTicket(stallId: string) {
+    try {
+      if (!Types.ObjectId.isValid(stallId)) {
+        throw new BadRequestException("Invalid stall ID format");
+      }
+
+      const stall = await this.stallModel
+        .findById(stallId)
+        .populate("shopkeeperId")
+        .populate("eventId")
+        .populate("organizerId");
+
+      if (!stall) {
+        throw new NotFoundException("Stall not found");
+      }
+
+      // 1. Verify Payment Status
+      if (stall.paymentStatus !== "Paid") {
+        throw new BadRequestException(
+          "Stall ticket can only be downloaded after the payment is completed (Paid status).",
+        );
+      }
+
+      const pdfFileName = `stall_ticket_${stallId}.pdf`;
+      const pdfDir = path.join(process.cwd(), "uploads", "stallTickets");
+      const pdfPath = path.join(pdfDir, pdfFileName);
+
+      // 2. If PDF already exists on disk (from confirmPayment), return it
+      if (fs.existsSync(pdfPath)) {
+        const buffer = await fs.promises.readFile(pdfPath);
+        return { buffer, filename: pdfFileName };
+      }
+
+      // 3. Fallback: If file is missing from disk, regenerate it on the fly
+      this.logger.warn(
+        `PDF missing on disk for stall ${stallId}. Regenerating...`,
+      );
+
+      // Reconstruct QR Payload
+      const qrPayload = stall.qrCodeData
+        ? JSON.parse(stall.qrCodeData)
+        : {
+            warning:
+              "❌ Normal scanners not allowed. Please use the Eventsh app.",
+            type: "eventsh-stall-checkin",
+            stallId: stallId,
+            shopkeeperId: (stall.shopkeeperId as any)._id.toString(),
+            eventId: (stall.eventId as any)._id.toString(),
+            issuedAt: stall.paymentConfirmedDate || new Date().toISOString(),
+          };
+
+      const qrCodeBase64 = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+        width: 200,
+        margin: 2,
+      });
+
+      // Construct dummy coupon object for HTML template using saved code
+      const coupon = stall.couponCodeAssigned
+        ? { code: stall.couponCodeAssigned }
+        : null;
+
+      // Generate the PDF Buffer
+      const pdfBuffer = await this.generateStallTicketPDF(
+        stall,
+        qrCodeBase64,
+        coupon,
+      );
+
+      // Save it back to disk to speed up future downloads
+      if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
+      await fs.promises.writeFile(pdfPath, pdfBuffer);
+
+      return {
+        buffer: pdfBuffer,
+        filename: pdfFileName,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error downloading stall ticket for ${stallId}:`,
+        error,
+      );
+      throw error;
     }
   }
 }

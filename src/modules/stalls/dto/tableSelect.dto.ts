@@ -74,4 +74,8 @@ export class SelectTablesAndAddOnsDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  couponCodeApplied?: string;
 }

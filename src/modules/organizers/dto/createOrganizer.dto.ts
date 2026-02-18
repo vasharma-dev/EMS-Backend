@@ -39,9 +39,9 @@ export class CreateOrganizerDto {
   @IsNotEmpty()
   businessEmail: string;
 
-  @IsString()
-  @IsNotEmpty()
-  businessCategory: string;
+  // @IsString()
+  // @IsNotEmpty()
+  // businessCategory: string;
 
   @IsString()
   @IsOptional()
@@ -55,7 +55,7 @@ export class CreateOrganizerDto {
   @IsNotEmpty()
   country: string;
 
-  @IsBoolean()
-  @IsNotEmpty()
-  hasDocVerification: boolean;
+  // @IsBoolean()
+  // @IsNotEmpty()
+  // hasDocVerification: boolean;
 }

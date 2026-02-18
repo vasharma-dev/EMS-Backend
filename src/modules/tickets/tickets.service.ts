@@ -85,6 +85,7 @@ export class TicketsService {
         type: "eventsh-ticket",
         ticketId: createTicketDto.ticketId,
         eventId: createTicketDto.eventId,
+        coupon: createTicketDto.coupon || null,
         issuedAt: new Date().toISOString(),
       };
 
@@ -106,6 +107,7 @@ export class TicketsService {
         eventTime: createTicketDto.eventInfo.time,
         eventVenue: createTicketDto.eventInfo.venue,
         customerName,
+        coupon: createTicketDto.coupon || null,
         customerEmail: ticketEmail,
         customerWhatsapp: whatsAppNumber,
         customerEmergencyContact:

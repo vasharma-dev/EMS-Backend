@@ -77,7 +77,7 @@ export class TableTemplateDto {
   name: string;
 
   @IsString()
-  type: "Straight" | "Corner" | "Round" | "Square";
+  type: "Straight";
 
   @IsNumber()
   width: number;
@@ -118,6 +118,9 @@ export class TableTemplateDto {
 export class PositionedTableDto extends TableTemplateDto {
   @IsString()
   positionId: string;
+
+  @IsString()
+  tableName: string;
 
   @IsNumber()
   x: number;
