@@ -71,4 +71,13 @@ export class CouponController {
   ) {
     return this.couponService.validateCoupon(code, orderAmount);
   }
+
+  @Post("Validate-Event-Coupon")
+  validateEventCoupon(
+    @Body("code") code: string,
+    @Body("orderAmount") orderAmount: number,
+    @Body("eventId") eventId: string,
+  ) {
+    return this.couponService.validateEventCoupon(code, eventId, orderAmount);
+  }
 }

@@ -9,6 +9,7 @@ import { GoogleStrategy } from "./strategies/google.strategy";
 import { InstagramStrategy } from "./strategies/instagram.strategy";
 import { GoogleShopkeeperStrategy } from "./strategies/shopkeeper-google.strategy";
 import { RolesModule } from "../roles/roles.module";
+import { GoogleOrganizerStrategy } from "./strategies/organizer-google.strategy";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { RolesModule } from "../roles/roles.module";
     GoogleStrategy,
     GoogleShopkeeperStrategy,
     InstagramStrategy,
+    GoogleOrganizerStrategy,
   ],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],

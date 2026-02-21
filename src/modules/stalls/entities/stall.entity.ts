@@ -12,7 +12,7 @@ class SelectedTable {
   positionId: string;
 
   @Prop({ required: true })
-  tableName: string;
+  name: string;
 
   @Prop({ required: true })
   tableType: string;
@@ -25,6 +25,7 @@ class SelectedTable {
 
   @Prop({ required: true })
   depositAmount: number;
+  tableName: any;
 }
 
 // Sub-schema for selected add-ons
@@ -149,6 +150,51 @@ export class Stall {
   // Auto-managed timestamps
   @Prop({ default: Date.now })
   createdAt: Date;
+
+  @Prop({ default: "0" })
+  noOfOperators: string;
+
+  @Prop()
+  couponCodeAssigned: string;
+
+  @Prop()
+  brandName: string;
+
+  @Prop()
+  nameOfApplicant: string;
+
+  @Prop()
+  registrationNumber?: string;
+
+  @Prop()
+  registrationImage: string;
+
+  @Prop()
+  businessOwnerNationality: string;
+
+  @Prop()
+  residency: string;
+
+  @Prop()
+  refundPaymentDescription: string;
+
+  @Prop()
+  companyLogo?: string;
+
+  @Prop()
+  faceBookLink?: string;
+
+  @Prop()
+  instagramLink?: string;
+
+  @Prop()
+  productDescription?: string;
+
+  @Prop()
+  productImage?: string[];
+
+  @Prop()
+  couponCodeApplied?: string;
 
   @Prop({ default: Date.now })
   updatedAt: Date;

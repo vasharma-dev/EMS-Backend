@@ -92,9 +92,6 @@ export class Organizer {
   whatsAppNumber: string;
 
   @Prop()
-  phoneNumber: string; // Kept for backward compatibility
-
-  @Prop()
   address: string;
 
   @Prop()
@@ -104,8 +101,8 @@ export class Organizer {
   description: string; // Added to match Shopkeeper
 
   // --- Business Details (New from Shopkeeper) ---
-  @Prop({ required: true, default: "General" }) // Added default to avoid breaking existing docs
-  businessCategory: string;
+  // @Prop({ required: true, default: "General" }) // Added default to avoid breaking existing docs
+  // businessCategory: string;
 
   @Prop()
   GSTNumber?: string;
@@ -132,8 +129,8 @@ export class Organizer {
   @Prop({ default: false })
   rejected: boolean;
 
-  @Prop({ default: false })
-  hasDocVerification: boolean;
+  // @Prop({ default: false })
+  // hasDocVerification: boolean;
 
   // --- Financials & Commission ---
   @Prop()

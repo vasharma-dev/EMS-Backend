@@ -445,6 +445,98 @@ export class UsersService {
     }
   }
 
+  async createUserByOrganizer(data: CreateUserDto, organizerId: string) {
+    try {
+      const user = await this.userModel.findOne({
+        whatsAppNumber: data.whatsAppNumber,
+        email: data?.email,
+      });
+
+      if (user) {
+        throw new BadRequestException("User Already Exists");
+      }
+
+      const created = new this.userModel({
+        name: data.firstName + " " + data.lastName,
+        email: data.email,
+        provider: "Organizer",
+        providerId: organizerId,
+        whatsAppNumber: data.whatsAppNumber,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
+
+      const saved = await created.save();
+      return { message: "User created successfully", data: saved };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateUserByOrganizer(
+    userId: string,
+    data: CreateUserDto,
+    organizerId: string,
+  ) {
+    try {
+      // 1. Check if user exists and belongs to this shopkeeper
+      const existingUser = await this.userModel.findOne({
+        _id: userId,
+        provider: "Organizer",
+        providerId: organizerId,
+      });
+
+      if (!existingUser) {
+        throw new BadRequestException("User not found or access denied");
+      }
+
+      // 2. Check for duplicate WhatsApp / Email (excluding current user)
+      // const duplicateUser = await this.userModel.findOne({
+      //   _id: { $ne: userId },
+      //   $or: [{ whatsAppNumber: data.whatsAppNumber }, { email: data.email }],
+      // });
+
+      // if (duplicateUser) {
+      //   throw new BadRequestException(
+      //     "Another user already exists with this WhatsApp number or email",
+      //   );
+      // }
+
+      // 3. Update fields
+      existingUser.firstName = data.firstName;
+      existingUser.lastName = data.lastName;
+      existingUser.name = `${data.firstName} ${data.lastName}`;
+      existingUser.email = data.email;
+      existingUser.whatsAppNumber = data.whatsAppNumber;
+
+      const updatedUser = await existingUser.save();
+
+      return {
+        message: "User updated successfully",
+        data: updatedUser,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async fetchUsersByOrganizerId(organizerId: string) {
+    try {
+      const user = await this.userModel.find({
+        provider: "Organizer",
+        providerId: organizerId,
+      });
+
+      if (!user) {
+        throw new NotFoundException("user not found");
+      }
+
+      return { message: "Users fetched successfully", data: user };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async fetchUserByWhatsAppNumber(whatsAppNumber: string) {
     try {
       const user = await this.userModel.findOne({

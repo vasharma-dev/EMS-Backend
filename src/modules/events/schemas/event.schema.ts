@@ -29,6 +29,14 @@ class VenueConfig {
   totalRows: number;
 }
 
+class termsAndConditionsforStalls {
+  @Prop()
+  termsAndConditionsforStalls: string;
+
+  @Prop()
+  isMandatory: boolean;
+}
+
 @Schema({ timestamps: true })
 export class Event {
   @Prop({ required: true })
@@ -145,7 +153,7 @@ export class Event {
   tableTemplates: {
     id: string;
     name: string;
-    type: "Straight" | "Corner" | "Round" | "Square";
+    type: "Straight";
     width: number;
     height: number;
     rowNumber: number; // NEW: Row number for pricing
@@ -160,10 +168,11 @@ export class Event {
   @Prop({ type: Array, default: [] })
   venueTables: {
     venueConfigId: string;
+    tableName: string;
     positionId: string;
     id: string;
     name: string;
-    type: "Straight" | "Corner" | "Round" | "Square";
+    type: "Straight";
     width: number;
     height: number;
     x: number;
@@ -184,6 +193,7 @@ export class Event {
     name: string;
     price: number;
     description: string;
+    addOnImage?: string;
   }[];
 
   @Prop({
@@ -208,6 +218,9 @@ export class Event {
 
   @Prop({ default: false })
   featured: boolean;
+
+  @Prop()
+  termsAndConditionsforStalls?: termsAndConditionsforStalls[];
 
   @Prop()
   createdAt: Date;

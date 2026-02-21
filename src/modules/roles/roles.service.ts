@@ -10,14 +10,14 @@ export class RoleService {
     private readonly organizerService: OrganizersService,
     private readonly shopkeeperService: ShopkeepersService,
     private readonly registrationService: RegistrationService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
   ) {}
 
   // Check if user already has this role and handle accordingly
   async checkRoleAvailability(
     email: string,
     name: string,
-    role: "organizer" | "shopkeeper"
+    role: "organizer" | "shopkeeper",
   ) {
     if (role === "organizer") {
       const organizer = await this.organizerService.findByEmail(email);
@@ -68,16 +68,29 @@ export class RoleService {
   async checkRoleAvailability1(
     email: string,
     name: string,
-    role: "organizer" | "shopkeeper"
+    role: "organizer" | "shopkeeper",
   ) {
     if (role === "organizer") {
       const organizer = await this.organizerService.findByEmail(email);
       if (organizer) {
-        return {
-          found: true,
-          message: "Organizer found. Please use password login.",
-          data: { email, role: "organizer" },
-        };
+        try {
+          return {
+            found: true,
+            message: "Organizer found. OTP sent to your registered email.",
+            data: {
+              email,
+              role: "organizer",
+            },
+          };
+        } catch (error) {
+          return {
+            found: true,
+            message:
+              "Shopkeeper found but failed to send OTP. Please try again.",
+            error: error.message,
+            data: { email, role: "shopkeeper" },
+          };
+        }
       }
     } else if (role === "shopkeeper") {
       const shopkeeper = await this.shopkeeperService.getByEmail(email);
@@ -117,7 +130,7 @@ export class RoleService {
     name: string,
     email: string,
     password: string,
-    role: "organizer" | "shopkeeper"
+    role: "organizer" | "shopkeeper",
   ) {
     try {
       // Create pending registration
@@ -202,13 +215,13 @@ export class RoleService {
     email: string,
     name: string,
     password: string,
-    role: "organizer" | "shopkeeper"
+    role: "organizer" | "shopkeeper",
   ) {
     // First check if user exists
     const availabilityResult = await this.checkRoleAvailability(
       email,
       name,
-      role
+      role,
     );
 
     if (availabilityResult.found) {
@@ -233,7 +246,7 @@ export class RoleService {
         name,
         email,
         password,
-        role
+        role,
       );
       return {
         action: "registration_submitted",

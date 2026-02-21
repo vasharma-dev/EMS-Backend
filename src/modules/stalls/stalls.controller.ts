@@ -8,7 +8,11 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  Res,
+  UploadedFiles,
+  UseInterceptors,
 } from "@nestjs/common";
+import { Response } from "express";
 import { StallsService } from "./stalls.service";
 import { CreateStallDto } from "./dto/create-stall.dto";
 import { SelectTablesAndAddOnsDto } from "./dto/tableSelect.dto";
@@ -17,6 +21,24 @@ import { UpdateStatusDto } from "./dto/updateStatus.dto";
 import { ConfirmPaymentDto } from "./dto/confirm-Payment.dto";
 import { ScanQRDto } from "./dto/scan-qr.dto";
 import { SendBulkInvitationDto } from "./dto/sendBulkInvitation.dto";
+import { diskStorage } from "multer";
+import { FileFieldsInterceptor } from "@nestjs/platform-express";
+import { v4 as uuidv4 } from "uuid";
+import * as path from "path";
+
+function generateFileName(req: any, file: any, cb: any) {
+  const ext = path.extname(file.originalname);
+  const filename = `${uuidv4()}${ext}`;
+  cb(null, filename);
+}
+
+const imageFilter = (req: any, file: any, cb: any) => {
+  if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+    cb(new Error("Only image files are allowed!"), false);
+  } else {
+    cb(null, true);
+  }
+};
 
 @Controller("stalls")
 export class StallsController {
@@ -28,7 +50,50 @@ export class StallsController {
    */
   @Post("register-for-stall")
   @HttpCode(HttpStatus.CREATED)
-  async createStallRequest(@Body() createStallDto: CreateStallDto) {
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: "registrationImage", maxCount: 1 },
+        { name: "companyLogo", maxCount: 1 },
+        { name: "productImage", maxCount: 5 },
+      ],
+      {
+        storage: diskStorage({
+          destination: "./uploads/stalls",
+          filename: generateFileName,
+        }),
+        fileFilter: imageFilter,
+        limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+      },
+    ),
+  )
+  async createStallRequest(
+    @UploadedFiles()
+    files: {
+      registrationImage?: Express.Multer.File[];
+      companyLogo?: Express.Multer.File[];
+      productImage?: Express.Multer.File[];
+    },
+    @Body() createStallDto: CreateStallDto,
+  ) {
+    // 1. Handle Registration Image (Single)
+    if (files.registrationImage && files.registrationImage[0]) {
+      createStallDto.registrationImage = `/uploads/stalls/${files.registrationImage[0].filename}`;
+    }
+
+    // 2. Handle Company Logo (Single)
+    if (files.companyLogo && files.companyLogo[0]) {
+      createStallDto.companyLogo = `/uploads/stalls/${files.companyLogo[0].filename}`;
+    }
+
+    // 3. Handle Product Images (Multiple - Array of 5)
+    if (files.productImage && files.productImage.length > 0) {
+      createStallDto.productImage = files.productImage.map(
+        (file) => `/uploads/stalls/${file.filename}`,
+      );
+    }
+
+    // 4. Call Service
     return await this.stallsService.createStallRequest(createStallDto);
   }
 
@@ -39,7 +104,7 @@ export class StallsController {
   @Get("check-request/:eventId/:shopkeeperId")
   async checkExistingRequest(
     @Param("eventId") eventId: string,
-    @Param("shopkeeperId") shopkeeperId: string
+    @Param("shopkeeperId") shopkeeperId: string,
   ) {
     return await this.stallsService.checkExistingRequest(eventId, shopkeeperId);
   }
@@ -51,7 +116,7 @@ export class StallsController {
   @Patch(":id/select-tables-and-addons")
   async selectTablesAndAddOns(
     @Param("id") id: string,
-    @Body() selectDto: SelectTablesAndAddOnsDto
+    @Body() selectDto: SelectTablesAndAddOnsDto,
   ) {
     return await this.stallsService.selectTablesAndAddOns(id, selectDto);
   }
@@ -74,7 +139,7 @@ export class StallsController {
   async confirmPayment(@Body() confirmPaymentDto: ConfirmPaymentDto) {
     return await this.stallsService.confirmPayment(
       confirmPaymentDto.stallId,
-      confirmPaymentDto.notes
+      confirmPaymentDto.notes,
     );
   }
 
@@ -104,7 +169,7 @@ export class StallsController {
   @Patch(":id/payment-status")
   async updatePaymentStatus(
     @Param("id") id: string,
-    @Body() updateDto: UpdatePaymentStatusDto
+    @Body() updateDto: UpdatePaymentStatusDto,
   ) {
     return await this.stallsService.updatePaymentStatus(id, updateDto);
   }
@@ -116,7 +181,7 @@ export class StallsController {
   @Patch(":id/status")
   async updateStatus(
     @Param("id") id: string,
-    @Body() updateDto: UpdateStatusDto
+    @Body() updateDto: UpdateStatusDto,
   ) {
     return await this.stallsService.updateStatus(id, updateDto);
   }
@@ -137,6 +202,22 @@ export class StallsController {
   @Get("event/:eventId")
   async findByEvent(@Param("eventId") eventId: string) {
     return await this.stallsService.findByEventId(eventId);
+  }
+
+  @Get("download-stall-ticket/:id")
+  async downloadTicket(@Param("id") id: string, @Res() res: Response) {
+    const { buffer, filename } =
+      await this.stallsService.downloadStallTicket(id);
+
+    // Set headers so the browser knows it's a PDF and downloads it
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": buffer.length.toString(),
+    });
+
+    // Send the buffer to the client
+    res.end(buffer);
   }
 
   /**

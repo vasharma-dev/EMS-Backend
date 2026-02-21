@@ -11,7 +11,7 @@ export class Coupon {
   @Prop()
   organizerId?: string;
 
-  @Prop({ required: true, unique: true, uppercase: true, trim: true })
+  @Prop({ required: true, uppercase: true, trim: true })
   code: string;
 
   @Prop({ enum: ["PERCENTAGE", "FLAT"], default: "PERCENTAGE" })
@@ -43,11 +43,14 @@ export class Coupon {
 
   @Prop({ default: false })
   isDeleted: boolean;
+
+  @Prop()
+  eventId?: string;
 }
 
 export const CouponSchema = SchemaFactory.createForClass(Coupon);
 
-CouponSchema.index({ code: 1 });
+// CouponSchema.index({ code: 1 });
 CouponSchema.index({ expiryDate: 1 });
 CouponSchema.index({ shopkeeperId: 1 });
 CouponSchema.index({ organizerId: 1 });

@@ -265,4 +265,46 @@ export class UsersController {
       throw error;
     }
   }
+
+  @Post("create-user-by-organizer/:organizerId")
+  async createUserByOrganizer(
+    @Body() createUserDto: CreateUserDto,
+    @Param("organizerId") organizerId: string,
+  ) {
+    try {
+      console.log("Caleeddddd");
+      return await this.usersService.createUserByOrganizer(
+        createUserDto,
+        organizerId,
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Patch("update-user-by-organizer/:organizerId/:userId")
+  async updateUserByOrganizer(
+    @Param("organizerId") organizerId: string,
+    @Param("userId") userId: string,
+    @Body() updateUserDto: CreateUserDto,
+  ) {
+    try {
+      return await this.usersService.updateUserByOrganizer(
+        userId,
+        updateUserDto,
+        organizerId,
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get("fetch-users-by-organizer/:organizerId")
+  async fetchUsersByorganizerId(@Param("organizerId") organizerId: string) {
+    try {
+      return await this.usersService.fetchUsersByOrganizerId(organizerId);
+    } catch (error) {
+      throw error;
+    }
+  }
 }

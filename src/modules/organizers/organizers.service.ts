@@ -414,22 +414,46 @@ export class OrganizersService {
     }
   }
 
-  async findByWhatsAppNumber(whatsAppNumber: string) {
+  async findByWhatsAppNumber(whatsAppNumber: string, targetId?: string) {
     try {
-      console.log(whatsAppNumber);
-      const organizer = await this.organizerModel.findOne({
+      // Find all organizations linked to this number
+      const organizers = await this.organizerModel.find({
         whatsAppNumber: whatsAppNumber,
       });
-      console.log(organizer);
-      if (!organizer) {
-        throw new NotFoundException("Organizer Not Found");
+
+      if (!organizers || organizers.length === 0) return null;
+
+      let targetOrganizer;
+
+      // 1. Auto-select if only one profile exists
+      if (organizers.length === 1) {
+        targetOrganizer = organizers[0];
+      }
+      // 2. Select specific organization if an ID was provided (from the frontend selection)
+      else if (targetId) {
+        targetOrganizer = organizers.find((o) => o._id.toString() === targetId);
+        if (!targetOrganizer)
+          throw new NotFoundException("Selected organization not found.");
+      }
+      // 3. Return List for Selection if multiple exist and no ID was provided
+      else {
+        return {
+          requiresSelection: true,
+          organizations: organizers.map((o) => ({
+            id: o._id.toString(),
+            organizationName: o.organizationName, // Make sure this field exists in your schema
+            name: o.name,
+          })),
+        };
       }
 
+      // 4. Generate Token for the selected organization
       const payload = {
-        name: organizer.name,
-        email: organizer.email,
-        sub: organizer._id,
+        name: targetOrganizer.name,
+        email: targetOrganizer.email,
+        sub: targetOrganizer._id.toString(),
         roles: ["organizer"],
+        // Add other fields like country if needed
       };
 
       const token = this.jwtService.sign(payload, {
@@ -439,7 +463,7 @@ export class OrganizersService {
 
       return { message: "Token found", token: token };
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

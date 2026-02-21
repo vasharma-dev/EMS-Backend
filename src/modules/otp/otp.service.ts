@@ -357,7 +357,7 @@ export class OtpService implements OnModuleInit {
     whatsappNumber: string,
     role: string,
     otp: string,
-    shopId?: string,
+    targetId?: string, // Rename shopId to targetId to be generic
   ) {
     const digits = this.normalizePhone(whatsappNumber);
     const identifier = digits;
@@ -368,7 +368,6 @@ export class OtpService implements OnModuleInit {
     // 1. Validate OTP
     if (!record || record.expiresAt < new Date() || record.otp !== otp) {
       if (record) {
-        // Logic to delete after max attempts...
         if (record.attempts + 1 >= this.MAX_ATTEMPTS) {
           await this.otpModel.deleteOne({ channel, role, identifier });
         } else {
@@ -382,31 +381,39 @@ export class OtpService implements OnModuleInit {
     let result = null;
 
     if (role === "shopkeeper") {
-      // 2. Find Shopkeeper (Pass shopId if available)
       result = await this.shopkeeperService.findByWhatsAppNumber(
         whatsappNumber,
-        shopId,
+        targetId,
       );
+      if (!result) throw new NotFoundException("Shopkeeper not found");
 
-      if (!result) throw new NotFoundException("User not found");
-
-      // 3. CRITICAL: If selection is needed, RETURN EARLY (Do not delete OTP yet)
       if (result.requiresSelection) {
         return {
           message: "Multiple accounts found",
           requiresSelection: true,
-          shops: result.shops, // Array of { id, shopName }
+          shops: result.shops,
         };
       }
-    } else {
-      // Organizer logic...
-      const organizer =
-        await this.organizerService.findByWhatsAppNumber(whatsappNumber);
-      if (!organizer) throw new NotFoundException("Token Not Found");
-      result = { token: organizer.token };
+    }
+    // --- UPDATED ORGANIZER LOGIC ---
+    else if (role === "organizer") {
+      result = await this.organizerService.findByWhatsAppNumber(
+        whatsappNumber,
+        targetId,
+      );
+      if (!result) throw new NotFoundException("Organizer not found");
+
+      // Handle multiple organization selection
+      if (result.requiresSelection) {
+        return {
+          message: "Multiple organizations found",
+          requiresSelection: true,
+          organizations: result.organizations,
+        };
+      }
     }
 
-    // 4. Success: Delete OTP only now
+    // 4. Success: Delete OTP only after a token is successfully generated
     await this.otpModel.deleteOne({ channel, role, identifier });
 
     return { message: "OTP verified", data: result.token };

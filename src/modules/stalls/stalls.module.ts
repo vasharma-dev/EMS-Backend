@@ -4,6 +4,7 @@ import { StallsService } from "./stalls.service";
 import { StallsController } from "./stalls.controller";
 import { Stall, StallSchema } from "./entities/stall.entity";
 import { OtpModule } from "../otp/otp.module";
+import { CouponModule } from "../coupon/coupon.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { OtpModule } from "../otp/otp.module";
       { name: "Organizer", schema: "OrganizerSchema" },
     ]),
     OtpModule,
+    CouponModule,
   ],
   controllers: [StallsController],
   providers: [StallsService],

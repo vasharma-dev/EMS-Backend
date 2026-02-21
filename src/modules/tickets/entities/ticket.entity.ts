@@ -73,6 +73,9 @@ export class Ticket {
   @Prop({ type: Date, required: true })
   purchaseDate: Date;
 
+  @Prop()
+  coupon?: string;
+
   @Prop({ default: false })
   isUsed: boolean;
 
@@ -84,6 +87,9 @@ export class Ticket {
 
   @Prop({ default: false })
   attendance?: boolean;
+
+  @Prop({ default: false })
+  hasMarked?: boolean;
 
   @Prop()
   qrCode?: string;

@@ -101,6 +101,10 @@ export class CreateTicketDto {
   paymentConfirmed: boolean;
 
   @IsString()
+  @IsOptional()
+  coupon?: string;
+
+  @IsString()
   purchaseDate: string;
 
   @ValidateNested()
