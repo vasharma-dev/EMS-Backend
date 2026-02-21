@@ -357,7 +357,8 @@ export class OtpService implements OnModuleInit {
     whatsappNumber: string,
     role: string,
     otp: string,
-    targetId?: string, // Rename shopId to targetId to be generic
+    targetId?: string,
+    emailId?: string,
   ) {
     const digits = this.normalizePhone(whatsappNumber);
     const identifier = digits;
@@ -384,6 +385,7 @@ export class OtpService implements OnModuleInit {
       result = await this.shopkeeperService.findByWhatsAppNumber(
         whatsappNumber,
         targetId,
+        emailId,
       );
       if (!result) throw new NotFoundException("Shopkeeper not found");
 
