@@ -834,11 +834,25 @@ export class ShopkeepersService {
     };
   }
 
-  async findByWhatsAppNumber(whatsAppNumber: string, targetShopId?: string) {
+  async findByWhatsAppNumber(
+    whatsAppNumber: string,
+    targetShopId?: string,
+    emailId?: string,
+  ) {
     try {
-      const shopkeepers = await this.shopModel.find({
-        whatsappNumber: whatsAppNumber,
-      });
+      console.log(
+        whatsAppNumber,
+        emailId,
+        "Finding shopkeeper by WhatsApp and Email",
+      );
+
+      const query: any = { whatsappNumber: whatsAppNumber };
+
+      if (emailId) {
+        query.email = emailId;
+      }
+
+      const shopkeepers = await this.shopModel.find(query);
 
       if (!shopkeepers || shopkeepers.length === 0) return null;
 

@@ -83,6 +83,7 @@ export class OtpController {
       role: string;
       otp: string;
       shopId?: string;
+      emailId?: string;
     },
   ) {
     try {
@@ -91,6 +92,7 @@ export class OtpController {
         body.role,
         body.otp,
         body.shopId,
+        body.emailId,
       );
     } catch (error) {
       throw error;
