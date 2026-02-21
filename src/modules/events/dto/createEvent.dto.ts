@@ -114,6 +114,14 @@ export class TableTemplateDto {
   customDimensions?: boolean;
 }
 
+export class termsAndConditionsforStalls {
+  @IsString()
+  termsAndConditionsforStalls: string;
+
+  @IsBoolean()
+  isMandatory: boolean;
+}
+
 // Positioned tables (extends template)
 export class PositionedTableDto extends TableTemplateDto {
   @IsString()
@@ -148,6 +156,10 @@ export class AddOnItemDto {
 
   @IsNumber()
   price: number;
+
+  @IsString()
+  @IsOptional()
+  addOnImage?: string;
 
   @IsString()
   @IsOptional()
@@ -293,6 +305,12 @@ export class CreateEventDto {
   @IsOptional()
   @Type(() => TableTemplateDto)
   tableTemplates?: TableTemplateDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => termsAndConditionsforStalls)
+  termsAndConditionsforStalls?: termsAndConditionsforStalls[];
 
   @ValidateNested({ each: true })
   @IsOptional()

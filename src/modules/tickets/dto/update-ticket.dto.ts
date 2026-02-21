@@ -13,6 +13,10 @@ export class UpdateTicketDto extends PartialType(CreateTicketDto) {
   isUsed?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  hasMarked?: boolean;
+
+  @IsOptional()
   @IsDateString()
   usedAt?: string;
 }

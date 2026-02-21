@@ -85,37 +85,48 @@ export class CreateStallDto {
   @IsNotEmpty()
   @IsString()
   brandName: string;
-  
-    @IsNotEmpty()
-    @IsString()
-    nameOfApplicant: string;
-  
-    @IsOptional()
-    @IsString()
-    registrationImage: string;
-  
-    @IsOptional()
-    @IsString()
-    businessOwnerNationality: string;
-  
-    @IsOptional()
-    @IsString()
-    companyLogo?: string;
-  
-    @IsOptional()
-    @IsString()
-    faceBookLink?: string;
-  
-    @IsOptional()
-    @IsString()
-    instagramLink?: string;
-  
-    @IsOptional()
-    @IsString()
-    productDescription?: string;
-  
-    @IsOptional()
-    @IsString()
-    productImage?: string[];
-  
+
+  @IsNotEmpty()
+  @IsString()
+  nameOfApplicant: string;
+
+  @IsOptional()
+  @IsString()
+  registrationImage: string;
+
+  @IsOptional()
+  @IsString()
+  registrationNumber: string;
+
+  @IsOptional()
+  @IsString()
+  residency: string;
+
+  @IsOptional()
+  @IsString()
+  refundPaymentDescription: string;
+
+  @IsOptional()
+  @IsString()
+  businessOwnerNationality: string;
+
+  @IsOptional()
+  @IsString()
+  companyLogo?: string;
+
+  @IsOptional()
+  @IsString()
+  faceBookLink?: string;
+
+  @IsOptional()
+  @IsString()
+  instagramLink?: string;
+
+  @IsOptional()
+  @IsString()
+  productDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  productImage?: string[];
 }

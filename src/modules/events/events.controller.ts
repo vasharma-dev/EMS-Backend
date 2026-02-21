@@ -53,6 +53,7 @@ export class EventsController {
       [
         { name: "banner", maxCount: 1 },
         { name: "gallery", maxCount: 5 },
+        { name: "addOnImages", maxCount: 100 },
       ],
       {
         storage: diskStorage({
@@ -66,7 +67,11 @@ export class EventsController {
   )
   async createEvent(
     @UploadedFiles()
-    files: { banner?: Express.Multer.File[]; gallery?: Express.Multer.File[] },
+    files: {
+      banner?: Express.Multer.File[];
+      gallery?: Express.Multer.File[];
+      addOnImages?: Express.Multer.File[];
+    },
     @Body() body: any,
     @Req() req: any,
   ) {
@@ -89,6 +94,11 @@ export class EventsController {
       if (typeof body.venueConfig === "string")
         body.venueConfig = JSON.parse(body.venueConfig);
 
+      if (typeof body.termsAndConditionsforStalls === "string")
+        body.termsAndConditionsforStalls = JSON.parse(
+          body.termsAndConditionsforStalls,
+        );
+
       // Handle banner image
       if (files.banner && files.banner[0]) {
         body.image = `/uploads/events/${files.banner[0].filename}`;
@@ -99,6 +109,23 @@ export class EventsController {
         body.gallery = files.gallery.map(
           (file) => `/uploads/events/${file.filename}`,
         );
+      }
+
+      if (
+        files.addOnImages &&
+        files.addOnImages.length > 0 &&
+        Array.isArray(body.addOnItems)
+      ) {
+        let imageIndex = 0;
+
+        body.addOnItems = body.addOnItems.map((addon) => {
+          // If the frontend marks that this specific add-on has a newly uploaded file
+          if (addon.hasNewImage && imageIndex < files.addOnImages.length) {
+            addon.image = `/uploads/events/${files.addOnImages[imageIndex].filename}`;
+            imageIndex++;
+          }
+          return addon;
+        });
       }
 
       const event = await this.eventsService.create(body);
@@ -184,6 +211,7 @@ export class EventsController {
       [
         { name: "banner", maxCount: 1 },
         { name: "gallery", maxCount: 5 },
+        { name: "addOnImages", maxCount: 100 }, // 1. Added this field
       ],
       {
         storage: diskStorage({
@@ -198,7 +226,11 @@ export class EventsController {
   async updateEvent(
     @Param("id") id: string,
     @UploadedFiles()
-    files: { banner?: Express.Multer.File[]; gallery?: Express.Multer.File[] },
+    files: {
+      banner?: Express.Multer.File[];
+      gallery?: Express.Multer.File[];
+      addOnImages?: Express.Multer.File[]; // 2. Updated type definition
+    },
     @Body() body: any,
     @Req() req: any,
   ) {
@@ -218,6 +250,11 @@ export class EventsController {
       if (typeof body.venueConfig === "string")
         body.venueConfig = JSON.parse(body.venueConfig);
 
+      if (typeof body.termsAndConditionsforStalls === "string")
+        body.termsAndConditionsforStalls = JSON.parse(
+          body.termsAndConditionsforStalls,
+        );
+
       // Handle new banner image
       if (files.banner && files.banner[0]) {
         body.image = `/uploads/events/${files.banner[0].filename}`;
@@ -228,6 +265,26 @@ export class EventsController {
         body.gallery = files.gallery.map(
           (file) => `/uploads/events/${file.filename}`,
         );
+      }
+
+      // 3. Handle Add-On Images (Mapping new files to correct items)
+      if (
+        files.addOnImages &&
+        files.addOnImages.length > 0 &&
+        Array.isArray(body.addOnItems)
+      ) {
+        let imageIndex = 0;
+
+        body.addOnItems = body.addOnItems.map((addon) => {
+          // If frontend says a new image was uploaded for this item
+          if (addon.hasNewImage && imageIndex < files.addOnImages.length) {
+            addon.image = `/uploads/events/${files.addOnImages[imageIndex].filename}`;
+            imageIndex++;
+          }
+          // Remove the helper flag before saving to DB
+          delete addon.hasNewImage;
+          return addon;
+        });
       }
 
       const event = await this.eventsService.update(id, body);

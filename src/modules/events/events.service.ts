@@ -66,6 +66,8 @@ export class EventsService {
         image: createEventDto.image,
         gallery: createEventDto.gallery || [],
         tableTemplates: createEventDto.tableTemplates || [],
+        termsAndConditionsforStalls:
+          createEventDto.termsAndConditionsforStalls || [],
         venueTables: createEventDto.venueTables || [],
         addOnItems: createEventDto.addOnItems || [],
 

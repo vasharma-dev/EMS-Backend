@@ -88,6 +88,9 @@ export class Ticket {
   @Prop({ default: false })
   attendance?: boolean;
 
+  @Prop({ default: false })
+  hasMarked?: boolean;
+
   @Prop()
   qrCode?: string;
 

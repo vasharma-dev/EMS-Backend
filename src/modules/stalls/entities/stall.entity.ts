@@ -164,10 +164,19 @@ export class Stall {
   nameOfApplicant: string;
 
   @Prop()
+  registrationNumber?: string;
+
+  @Prop()
   registrationImage: string;
 
   @Prop()
   businessOwnerNationality: string;
+
+  @Prop()
+  residency: string;
+
+  @Prop()
+  refundPaymentDescription: string;
 
   @Prop()
   companyLogo?: string;
@@ -183,6 +192,9 @@ export class Stall {
 
   @Prop()
   productImage?: string[];
+
+  @Prop()
+  couponCodeApplied?: string;
 
   @Prop({ default: Date.now })
   updatedAt: Date;
