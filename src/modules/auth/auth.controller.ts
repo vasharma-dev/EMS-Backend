@@ -122,12 +122,12 @@ export class AuthController {
       const userFromGoogle = req.user as any;
 
       if (!userFromGoogle) {
-        // return res.redirect(
-        //   "https://kioscart.com/estore/login?error=auth_failed",
-        // );
         return res.redirect(
-          "http://localhost:8080/estore/login?error=auth_failed",
+          "https://kioscart.com/estore/login?error=auth_failed",
         );
+        // return res.redirect(
+        //   "http://localhost:8080/estore/login?error=auth_failed",
+        // );
       }
 
       console.log(userFromGoogle, "userFromGoogle");
@@ -162,27 +162,27 @@ export class AuthController {
 
       // ✅ IMPORTANT: redirect to eshop-login with token & email
       // Frontend useEffect will detect token in URL params and call check-role API
-      // return res.redirect(
-      //   `https://kioscart.com/estore/login?token=${encodeURIComponent(
-      //     token,
-      //   )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
-      //     user.name,
-      //   )}`,
-      // );
       return res.redirect(
-        `http://localhost:8080/estore/login?token=${encodeURIComponent(
+        `https://kioscart.com/estore/login?token=${encodeURIComponent(
           token,
         )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
           user.name,
         )}`,
       );
-    } catch (error) {
       // return res.redirect(
-      //   "https://https://kioscart.com/estore/login?error=auth_failed",
+      //   `http://localhost:8080/estore/login?token=${encodeURIComponent(
+      //     token,
+      //   )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
+      //     user.name,
+      //   )}`,
       // );
+    } catch (error) {
       return res.redirect(
-        "http://localhost:8080/estore/login?error=auth_failed",
+        "https://https://kioscart.com/estore/login?error=auth_failed",
       );
+      // return res.redirect(
+      //   "http://localhost:8080/estore/login?error=auth_failed",
+      // );
     }
   }
 
@@ -200,12 +200,12 @@ export class AuthController {
       const userFromGoogle = req.user as any;
 
       if (!userFromGoogle) {
-        // return res.redirect(
-        //   "https://eventsh.com/organizer/login?error=auth_failed",
-        // );
         return res.redirect(
-          "http://localhost:8080/organizer/login?error=auth_failed",
+          "https://eventsh.com/organizer/login?error=auth_failed",
         );
+        // return res.redirect(
+        //   "http://localhost:8080/organizer/login?error=auth_failed",
+        // );
       }
 
       console.log(userFromGoogle, "userFromGoogle");
@@ -240,27 +240,27 @@ export class AuthController {
 
       // ✅ IMPORTANT: redirect to eshop-login with token & email
       // Frontend useEffect will detect token in URL params and call check-role API
-      // return res.redirect(
-      //   `https://eventsh.com/organizer/login?token=${encodeURIComponent(
-      //     token,
-      //   )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
-      //     user.name,
-      //   )}`,
-      // );
       return res.redirect(
-        `http://localhost:8080/organizer/login?token=${encodeURIComponent(
+        `https://eventsh.com/organizer/login?token=${encodeURIComponent(
           token,
         )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
           user.name,
         )}`,
       );
-    } catch (error) {
       // return res.redirect(
-      //   "https://eventsh.com/organizer/login?error=auth_failed",
+      //   `http://localhost:8080/organizer/login?token=${encodeURIComponent(
+      //     token,
+      //   )}&email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(
+      //     user.name,
+      //   )}`,
       // );
+    } catch (error) {
       return res.redirect(
-        "http://localhost:8080/organizer/login?error=auth_failed",
+        "https://eventsh.com/organizer/login?error=auth_failed",
       );
+      // return res.redirect(
+      //   "http://localhost:8080/organizer/login?error=auth_failed",
+      // );
     }
   }
 
