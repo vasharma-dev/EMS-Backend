@@ -219,7 +219,7 @@ export class Event {
   @Prop({ default: false })
   featured: boolean;
 
-  @Prop()
+  @Prop({ type: [Object], default: [] })
   termsAndConditionsforStalls?: termsAndConditionsforStalls[];
 
   @Prop()

@@ -25,6 +25,7 @@ import * as QRCode from "qrcode";
 import { CouponService } from "../coupon/coupon.service";
 import { ShopkeeperStoresService } from "../shopkeeper-stores/shopkeeper-stores.service";
 import { ShopfrontStore } from "../shopkeeper-stores/entities/shopkeeper-store.entity";
+import { UpdateOrderDto } from "./dto/update-order.dto";
 
 function asObjectId(id: string | Types.ObjectId): Types.ObjectId | string {
   // If already an ObjectId
@@ -520,6 +521,31 @@ export class OrdersService {
               align: "center",
             });
 
+          // ========== STATUS NOTES (History) ==========
+          if (order.statusHistory && order.statusHistory.length > 0) {
+            doc.moveDown(0.5);
+            doc
+              .font("Helvetica-Bold")
+              .fontSize(10)
+              .text("Status Updates / Notes:");
+
+            order.statusHistory.forEach((history) => {
+              if (history.note) {
+                // Only show entries that have actual notes
+                doc.font("Helvetica-Oblique").fontSize(9).fillColor("#475569");
+                doc.text(`${history.status.toUpperCase()}: ${history.note}`);
+              }
+            });
+            doc.fillColor("#000000"); // Reset color
+          }
+
+          doc.moveDown(0.2);
+          doc
+            .fontSize(12)
+            .text("---------------------------------------------------", {
+              align: "center",
+            });
+
           // ========== PAYMENT INFO ==========
           doc.moveDown(0.15);
           doc.font("Helvetica").fontSize(10);
@@ -993,6 +1019,45 @@ export class OrdersService {
             { width: 80, align: "right" },
           );
 
+          /* ================= 4.5 STATUS NOTES (History) ================= */
+          yPos += 40; // Add spacing after the Total Box
+
+          if (order.statusHistory && order.statusHistory.length > 0) {
+            // Check if there are any notes to display
+            const historyWithNotes = order.statusHistory.filter(
+              (h: any) => h.note,
+            );
+
+            if (historyWithNotes.length > 0) {
+              // Check for page overflow
+              if (yPos > 600) {
+                doc.addPage();
+                yPos = 40;
+              }
+
+              doc
+                .fillColor(textColor)
+                .font("Helvetica-Bold")
+                .fontSize(10)
+                .text("STATUS UPDATES / NOTES:", 40, yPos);
+
+              yPos += 15;
+
+              historyWithNotes.forEach((history: any) => {
+                const noteText = `${history.status.toUpperCase()}: ${history.note}`;
+                const noteHeight = doc.heightOfString(noteText, { width: 520 });
+
+                doc
+                  .font("Helvetica-Oblique")
+                  .fontSize(9)
+                  .fillColor(secondaryColor)
+                  .text(noteText, 40, yPos, { width: 520 });
+
+                yPos += noteHeight + 5;
+              });
+            }
+          }
+
           /* ================= 5. FOOTER & QRs ================= */
           const footerY = 650;
           doc.rect(40, footerY, 520, 1).fill(borderColor);
@@ -1067,50 +1132,50 @@ export class OrdersService {
 
   async updateOrderStatus(
     orderId: string,
-    newStatus: OrderStatus,
+    updateDto: UpdateOrderDto, // Use the DTO
   ): Promise<Order> {
-    try {
-      const order = await this.orderModel
-        .findById({ _id: orderId })
-        .populate("userId")
-        .populate("shopkeeperId");
+    const { status: newStatus, notes, changedBy } = updateDto;
 
-      if (!order) {
-        throw new NotFoundException("Order not found");
-      }
+    try {
+      const order = await this.orderModel.findById(orderId);
+      if (!order) throw new NotFoundException("Order not found");
 
       if (order.status === OrderStatus.Cancelled) {
-        console.log(
-          `[DEBUG] Order with ID ${orderId} is already cancelled. Cannot update.`,
-        );
         throw new BadRequestException(
           "Cannot change status of a cancelled order",
         );
       }
 
-      let receipt: Buffer | undefined;
+      // 1. Prepare the history entry
+      const historyEntry = {
+        status: newStatus,
+        note: notes || "",
+        changedAt: new Date(),
+        changedBy: changedBy || "System",
+      };
 
-      if (newStatus === "processing") {
-        receipt = await this.generateReceipt(orderId);
-      }
-      order.status = newStatus;
+      // 2. Update status and push to history
+      const updatedOrder = await this.orderModel
+        .findByIdAndUpdate(
+          orderId,
+          {
+            $set: { status: newStatus },
+            $push: { statusHistory: historyEntry },
+          },
+          { new: true },
+        )
+        .populate("userId shopkeeperId");
 
+      // Inventory logic for cancellation
       if (newStatus === OrderStatus.Cancelled) {
-        await this.updateProductInventory(order.items, "restore");
+        await this.updateProductInventory(updatedOrder.items, "restore");
       }
 
       await order.save();
-      console.log(
-        `[DEBUG] Order ${orderId} status successfully saved as ${newStatus}`,
-      );
 
       const user = order.userId as any;
       const shopkeeper = order.shopkeeperId as any;
 
-      // Send email notification
-      console.log(
-        `[DEBUG] Checking if email notification can be sent. User email: ${user?.email}`,
-      );
       if (user?.email) {
         console.log("Mail");
         await this.mailService.sendOrderStatusEmail(
@@ -1124,12 +1189,7 @@ export class OrdersService {
         );
       }
 
-      // Send WhatsApp notification
-      console.log(
-        `[DEBUG] Checking if WhatsApp notification can be sent. User phone: ${user?.whatsAppNumber}, Shopkeeper phone: ${shopkeeper?.whatsappNumber}`,
-      );
       if (user?.whatsAppNumber && shopkeeper?.whatsappNumber) {
-        console.log("calledd");
         await this.sendWhatsAppToUser(
           user.whatsAppNumber, // Corrected casing
           user.name,
@@ -1142,9 +1202,6 @@ export class OrdersService {
       }
       return order;
     } catch (error) {
-      console.log(
-        `[DEBUG] An error occurred in updateOrderStatus: ${error.message}`,
-      );
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException

@@ -22,13 +22,14 @@ import { EnquiryModule } from "./modules/enquiry/enquiry.module";
 import { ShopkeeperAnalyticsModule } from "./modules/shopkeepers/shopkeeper-analytics.module";
 import { OrganizerStoresModule } from "./modules/organizer-stores/organizer-stores.module";
 import { CouponModule } from "./modules/coupon/coupon.module";
+import { OperatorsModule } from "./modules/operators/operators.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MailModule,
     MongooseModule.forRoot(
-      process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventsh_dev"
+      process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventsh_dev",
     ),
     AuthModule,
     UsersModule,
@@ -49,7 +50,8 @@ import { CouponModule } from "./modules/coupon/coupon.module";
     EnquiryModule,
     ShopkeeperAnalyticsModule,
     OrganizerStoresModule,
-    CouponModule
+    CouponModule,
+    OperatorsModule,
   ],
 })
 export class AppModule {}

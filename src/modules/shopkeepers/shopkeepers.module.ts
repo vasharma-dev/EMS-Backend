@@ -7,14 +7,21 @@ import { JwtService } from "@nestjs/jwt";
 import { MailModule } from "../roles/mail.module";
 import { OtpModule } from "../otp/otp.module";
 import { Otp, OtpSchema } from "../otp/entities/otp.entity";
+import { OperatorsModule } from "../operators/operators.module";
+import {
+  Operator,
+  OperatorSchema,
+} from "../operators/entities/operator.entity";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Shopkeeper.name, schema: ShopkeeperSchema },
       { name: Otp.name, schema: OtpSchema },
+      { name: Operator.name, schema: OperatorSchema },
     ]),
-    forwardRef(() => OtpModule), // Wrap here with forwardRef
+    forwardRef(() => OtpModule),
+    forwardRef(() => OperatorsModule), // Wrap here with forwardRef
     forwardRef(() => MailModule), // MailModule too if circular
   ],
   providers: [ShopkeepersService, JwtService],
