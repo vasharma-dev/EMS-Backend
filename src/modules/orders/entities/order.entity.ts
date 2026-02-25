@@ -16,6 +16,21 @@ export enum OrderType {
   Pickup = "pickup",
 }
 
+@Schema({ _id: false })
+export class StatusHistory {
+  @Prop({ type: String, enum: OrderStatus, required: true })
+  status: OrderStatus;
+
+  @Prop({ type: String, required: false })
+  note?: string;
+
+  @Prop({ type: Date, default: Date.now })
+  changedAt: Date;
+
+  @Prop({ type: String, required: false }) // e.g., "admin", "shopkeeper", "system"
+  changedBy?: string;
+}
+
 @Schema({ timestamps: true })
 export class Order extends Document {
   @Prop({ required: true, unique: true })
@@ -58,6 +73,19 @@ export class Order extends Document {
 
   @Prop({ default: Date.now })
   createdAt: Date;
+
+  @Prop({
+    type: [
+      {
+        status: { type: String, enum: OrderStatus },
+        note: { type: String },
+        changedAt: { type: Date, default: Date.now },
+        changedBy: { type: String },
+      },
+    ],
+    default: [],
+  })
+  statusHistory: StatusHistory[];
 
   @Prop({ default: Date.now })
   updatedAt: Date;

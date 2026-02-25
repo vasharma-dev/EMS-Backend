@@ -23,6 +23,10 @@ import { Types } from "mongoose";
 import Razorpay from "razorpay";
 import { CreateRazorpayLinkedAccountDto } from "./dto/razorpay.dto";
 import { UpdateShopkeeperDto } from "./dto/updateShopkeeper.dto";
+import {
+  Operator,
+  OperatorDocument,
+} from "../operators/entities/operator.entity";
 
 @Injectable()
 export class ShopkeepersService {
@@ -30,7 +34,8 @@ export class ShopkeepersService {
   private razorPay: Razorpay;
   constructor(
     @InjectModel(Shopkeeper.name) private shopModel: Model<ShopkeeperDocument>,
-    @InjectModel(Otp.name) private otpModel: Model<Otp>, // Use your existing Otp model
+    @InjectModel(Otp.name) private otpModel: Model<Otp>,
+    @InjectModel(Operator.name) private operatorModel: Model<OperatorDocument>, // Use your existing Otp model
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
   ) {
@@ -836,69 +841,158 @@ export class ShopkeepersService {
 
   async findByWhatsAppNumber(
     whatsAppNumber: string,
-    targetShopId?: string,
+    targetId?: string,
     emailId?: string,
   ) {
     try {
-      console.log(
+      console.log("========== LOGIN DEBUG START ==========");
+      console.log("Incoming Params:", {
         whatsAppNumber,
+        targetId,
         emailId,
-        "Finding shopkeeper by WhatsApp and Email",
-      );
+      });
 
-      const query: any = { whatsappNumber: whatsAppNumber };
+      // 1️⃣ Shopkeeper Query
+      const shopkeeperQuery: any = {
+        $or: [
+          { whatsappNumber: whatsAppNumber },
+          { whatsAppNumber: whatsAppNumber },
+        ],
+      };
 
-      if (emailId) {
-        query.email = emailId;
+      if (emailId) shopkeeperQuery.email = emailId;
+
+      console.log("Shopkeeper Query:", shopkeeperQuery);
+
+      // 2️⃣ Operator Query (WhatsApp only)
+      const operatorQuery = {
+        $or: [
+          { whatsappNumber: whatsAppNumber },
+          { whatsAppNumber: whatsAppNumber },
+        ],
+      };
+
+      console.log("Operator Query:", operatorQuery);
+
+      const [shopkeepers, operators] = await Promise.all([
+        this.shopModel.find(shopkeeperQuery),
+        this.operatorModel.find(operatorQuery),
+      ]);
+
+      console.log("Shopkeepers Found:", shopkeepers.length);
+      console.log("Operators Found:", operators.length);
+
+      // 3️⃣ Fetch parent shops for operators
+      const operatorShopIds = [
+        ...new Set(operators.map((o) => o.shopkeeperId)),
+      ];
+
+      console.log("Operator Shop IDs:", operatorShopIds);
+
+      const operatorShops = await this.shopModel.find({
+        _id: { $in: operatorShopIds },
+      });
+
+      console.log("Operator Parent Shops Found:", operatorShops.length);
+
+      const shopLookup = operatorShops.reduce((acc, shop) => {
+        acc[shop._id.toString()] = shop.shopName;
+        return acc;
+      }, {});
+
+      console.log("Shop Lookup Map:", shopLookup);
+
+      // 4️⃣ Map to unified options
+      const shopOptions = shopkeepers.map((s) => ({
+        id: s._id.toString(),
+        name: s.shopName,
+        type: "shopkeeper",
+        approved: s.approved,
+      }));
+
+      const operatorOptions = operators.map((o) => ({
+        id: o.shopkeeperId.toString(),
+        name: `${
+          shopLookup[o.shopkeeperId.toString()] || "Unknown Shop"
+        } (Operator: ${o.name})`,
+        type: "operator",
+        approved: true,
+      }));
+
+      const allOptions = [...shopOptions, ...operatorOptions];
+
+      // 5️⃣ Selection Logic
+      if (allOptions.length === 0) {
+        return null;
       }
 
-      const shopkeepers = await this.shopModel.find(query);
+      let selectedOption;
 
-      if (!shopkeepers || shopkeepers.length === 0) return null;
+      if (allOptions.length === 1) {
+        selectedOption = allOptions[0];
+      } else if (targetId) {
+        selectedOption = allOptions.find((opt) => opt.id === targetId);
 
-      let targetShopkeeper;
-
-      // 1. Auto-select if only one
-      if (shopkeepers.length === 1) {
-        targetShopkeeper = shopkeepers[0];
-      }
-      // 2. Select specific if ID provided
-      else if (targetShopId) {
-        targetShopkeeper = shopkeepers.find(
-          (s) => s._id.toString() === targetShopId, // Convert ObjectId to string for comparison
-        );
-        if (!targetShopkeeper)
-          throw new NotFoundException("Selected shop not found.");
-      }
-      // 3. Return List for Selection
-      else {
+        if (!selectedOption) {
+          throw new NotFoundException("Selected account not found.");
+        }
+      } else {
         return {
           requiresSelection: true,
-          shops: shopkeepers.map((s) => ({
-            id: s._id.toString(), // CRITICAL: Convert to string
-            shopName: s.shopName,
-            approved: s.approved,
+          shops: allOptions.map((opt) => ({
+            id: opt.id,
+            shopName: opt.name,
+            type: opt.type,
+            approved: opt.approved,
           })),
         };
       }
 
-      // 4. Generate Token
-      const payload = {
-        name: targetShopkeeper.name,
-        email: targetShopkeeper.email,
-        sub: targetShopkeeper._id.toString(),
-        country: targetShopkeeper.country,
-        roles: ["shopkeeper"],
-      };
+      // 6️⃣ Generate JWT Payload
+      let payload: any;
+
+      if (selectedOption.type === "shopkeeper") {
+        const shop = shopkeepers.find(
+          (s) => s._id.toString() === selectedOption.id,
+        );
+
+        payload = {
+          name: shop.name,
+          email: shop.email,
+          sub: shop._id.toString(),
+          country: shop.country,
+          roles: ["shopkeeper"],
+        };
+      } else {
+        const op = operators.find(
+          (o) => o.shopkeeperId.toString() === selectedOption.id,
+        );
+
+        const parentShop = operatorShops.find(
+          (s) => s._id.toString() === op.shopkeeperId.toString(),
+        );
+
+        if (!parentShop) {
+          throw new NotFoundException("Parent shop not found.");
+        }
+
+        payload = {
+          name: op.name,
+          email: op.email ?? "",
+          sub: parentShop._id.toString(),
+          operatorId: op._id.toString(),
+          country: parentShop.country,
+          roles: ["shopkeeper"],
+        };
+      }
 
       const token = this.jwtService.sign(payload, {
         secret: process.env.JWT_ACCESS_SECRET,
         expiresIn: "24h",
       });
 
-      return { message: "Token found", token: token };
+      return { message: "Token found", token };
     } catch (error) {
-      console.error(error);
       throw error;
     }
   }

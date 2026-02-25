@@ -64,10 +64,7 @@ export class OrdersController {
     @Body() updateDTO: UpdateOrderDto,
   ) {
     try {
-      return await this.ordersService.updateOrderStatus(
-        orderId,
-        updateDTO.status,
-      );
+      return await this.ordersService.updateOrderStatus(orderId, updateDTO);
     } catch (err) {
       throw new BadRequestException(err.message);
     }

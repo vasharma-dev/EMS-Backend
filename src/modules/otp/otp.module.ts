@@ -16,6 +16,6 @@ import { OrganizersModule } from "../organizers/organizers.module";
   ],
   controllers: [OtpController],
   providers: [OtpService],
-  exports: [OtpService],
+  exports: [OtpService, MongooseModule],
 })
 export class OtpModule {}
