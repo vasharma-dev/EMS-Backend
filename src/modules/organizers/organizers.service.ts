@@ -686,7 +686,7 @@ export class OrganizersService {
     id: string,
     body: {
       ownerName?: string;
-      shopName?: string;
+      organizationName?: string;
       email?: string;
       businessEmail?: string;
       whatsappNumber?: string;
@@ -724,7 +724,8 @@ export class OrganizersService {
 
       // ✅ EXISTING FIELDS
       if (body.ownerName !== undefined) update.name = body.ownerName;
-      if (body.shopName !== undefined) update.shopName = body.shopName;
+      if (body.organizationName !== undefined)
+        update.organizationName = body.organizationName;
       if (body.email !== undefined)
         update.email = this.normalizeEmail(body.email);
       if (body.businessEmail !== undefined)
