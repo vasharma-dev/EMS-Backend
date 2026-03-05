@@ -26,7 +26,7 @@ class VenueConfig {
   hasMainStage: boolean;
 
   @Prop()
-  totalRows: number;
+  totalRows?: number;
 }
 
 class termsAndConditionsforStalls {
@@ -156,7 +156,7 @@ export class Event {
     type: "Straight";
     width: number;
     height: number;
-    rowNumber: number; // NEW: Row number for pricing
+    rowNumber?: number; // NEW: Row number for pricing
     tablePrice: number; // NEW: Full table rental price
     bookingPrice: number; // NEW: Partial payment (must be <= tablePrice)
     depositPrice: number; // NEW: Security deposit (can be > tablePrice)
@@ -179,7 +179,7 @@ export class Event {
     y: number;
     rotation: number;
     isPlaced: boolean;
-    rowNumber: number; // NEW: Row number for pricing
+    rowNumber?: number; // NEW: Row number for pricing
     tablePrice: number; // NEW: Full table rental price
     bookingPrice: number; // NEW: Partial payment (must be <= tablePrice)
     depositPrice: number; // NEW: Security deposit (can be > tablePrice)

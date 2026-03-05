@@ -5,8 +5,21 @@ import { IsEnum, IsOptional, IsString } from "class-validator";
  * Used by organizer to confirm or cancel requests
  */
 export class UpdateStatusDto {
-  @IsEnum(["Pending", "Confirmed", "Cancelled", "Processing", "Completed"])
-  status: "Pending" | "Confirmed" | "Cancelled" | "Processing" | "Completed";
+  @IsEnum([
+    "Pending",
+    "Confirmed",
+    "Cancelled",
+    "Processing",
+    "Completed",
+    "Returned",
+  ])
+  status:
+    | "Pending"
+    | "Confirmed"
+    | "Cancelled"
+    | "Processing"
+    | "Completed"
+    | "Returned";
 
   @IsOptional()
   @IsString()
@@ -15,4 +28,8 @@ export class UpdateStatusDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  changedBy?: string;
 }

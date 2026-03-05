@@ -12,6 +12,8 @@ import { OtpModule } from "../otp/otp.module";
 import { MailModule } from "../roles/mail.module";
 import { PlanSchema } from "../plans/entities/plan.entity";
 import { OtpService } from "../otp/otp.service";
+import { OperatorsModule } from "../operators/operators.module";
+import { OperatorSchema } from "../operators/entities/operator.entity";
 
 @Module({
   imports: [
@@ -21,8 +23,10 @@ import { OtpService } from "../otp/otp.service";
       { name: "User", schema: UserSchema },
       { name: "Otp", schema: OtpSchema },
       { name: "Plan", schema: PlanSchema },
+      { name: "Operator", schema: OperatorSchema },
     ]),
     forwardRef(() => OtpModule),
+    forwardRef(() => OperatorsModule),
     MailModule,
   ],
   providers: [OrganizersService, JwtService, MailService],
