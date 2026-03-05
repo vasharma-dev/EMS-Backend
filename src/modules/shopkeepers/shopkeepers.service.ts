@@ -870,6 +870,7 @@ export class ShopkeepersService {
           { whatsappNumber: whatsAppNumber },
           { whatsAppNumber: whatsAppNumber },
         ],
+        shopkeeperId: { $exists: true, $ne: null },
       };
 
       console.log("Operator Query:", operatorQuery);

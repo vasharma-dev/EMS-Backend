@@ -273,7 +273,7 @@ export class StallsController {
 
   @Patch(":id/return-deposit")
   @HttpCode(HttpStatus.OK)
-  async returnDeposit(@Param("id") id: string) {
-    return await this.stallsService.returnedDeposit(id);
+  async returnDeposit(@Param("id") id: string, @Body("notes") notes: string) {
+    return await this.stallsService.returnedDeposit(id, notes);
   }
 }

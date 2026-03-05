@@ -26,6 +26,10 @@ import * as path from "path";
 import * as fs from "fs";
 import { Plan } from "../plans/entities/plan.entity";
 import { OtpService } from "../otp/otp.service";
+import {
+  Operator,
+  OperatorDocument,
+} from "../operators/entities/operator.entity";
 
 @Injectable()
 export class OrganizersService {
@@ -38,6 +42,7 @@ export class OrganizersService {
     @InjectModel(User.name)
     private userModel: Model<User>,
     @InjectModel(Plan.name) private planModel: Model<Plan>,
+    @InjectModel(Operator.name) private operatorModel: Model<OperatorDocument>,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     // private readonly otpService: OtpService
@@ -414,56 +419,160 @@ export class OrganizersService {
     }
   }
 
-  async findByWhatsAppNumber(whatsAppNumber: string, targetId?: string) {
+  async findByWhatsAppNumber(
+    whatsAppNumber: string,
+    targetId?: string,
+    emailId?: string,
+  ) {
     try {
-      // Find all organizations linked to this number
-      const organizers = await this.organizerModel.find({
-        whatsAppNumber: whatsAppNumber,
+      console.log("========== LOGIN DEBUG START ==========");
+      console.log("Incoming Params:", {
+        whatsAppNumber,
+        targetId,
+        emailId,
       });
 
-      if (!organizers || organizers.length === 0) return null;
+      // 1️⃣ Organizer Query
+      const organizerQuery: any = {
+        $or: [
+          { whatsappNumber: whatsAppNumber },
+          { whatsAppNumber: whatsAppNumber },
+        ],
+      };
 
-      let targetOrganizer;
+      if (emailId) organizerQuery.email = emailId;
 
-      // 1. Auto-select if only one profile exists
-      if (organizers.length === 1) {
-        targetOrganizer = organizers[0];
+      console.log("Organizer Query:", organizerQuery);
+
+      // 2️⃣ Operator Query (WhatsApp only)
+      // 2️⃣ Operator Query (WhatsApp only - only records with organizerId)
+      const operatorQuery = {
+        $or: [
+          { whatsappNumber: whatsAppNumber },
+          { whatsAppNumber: whatsAppNumber },
+        ],
+        organizerId: { $exists: true, $ne: null }, // ✅ Only fetch operator records tied to an organizer
+      };
+
+      console.log("Operator Query:", operatorQuery);
+
+      const [organizers, operators] = await Promise.all([
+        this.organizerModel.find(organizerQuery),
+        this.operatorModel.find(operatorQuery),
+      ]);
+
+      console.log("Organizers Found:", organizers.length);
+      console.log("Operators Found:", operators.length);
+
+      // 3️⃣ Fetch parent organizations for operators
+      const operatorOrgIds = [...new Set(operators.map((o) => o.organizerId))];
+
+      console.log("Operator Org IDs:", operatorOrgIds);
+
+      const operatorOrgs = await this.organizerModel.find({
+        _id: { $in: operatorOrgIds },
+      });
+
+      console.log("Operator Parent Orgs Found:", operatorOrgs.length);
+
+      const orgLookup = operatorOrgs.reduce((acc, org) => {
+        acc[org._id.toString()] = org.organizationName;
+        return acc;
+      }, {});
+
+      console.log("Org Lookup Map:", orgLookup);
+
+      // 4️⃣ Map to unified options
+      const organizerOptions = organizers.map((o) => ({
+        id: o._id.toString(),
+        name: o.organizationName,
+        type: "organizer",
+        approved: o.approved,
+      }));
+
+      const operatorOptions = operators.map((o) => ({
+        id: o.organizerId.toString(),
+        name: `${
+          orgLookup[o.organizerId.toString()] || "Unknown Organization"
+        } (Operator: ${o.name})`,
+        type: "operator",
+        approved: true,
+      }));
+
+      const allOptions = [...organizerOptions, ...operatorOptions];
+
+      // 5️⃣ Selection Logic
+      if (allOptions.length === 0) {
+        return null;
       }
-      // 2. Select specific organization if an ID was provided (from the frontend selection)
-      else if (targetId) {
-        targetOrganizer = organizers.find((o) => o._id.toString() === targetId);
-        if (!targetOrganizer)
-          throw new NotFoundException("Selected organization not found.");
-      }
-      // 3. Return List for Selection if multiple exist and no ID was provided
-      else {
+
+      let selectedOption;
+
+      if (allOptions.length === 1) {
+        selectedOption = allOptions[0];
+      } else if (targetId) {
+        selectedOption = allOptions.find((opt) => opt.id === targetId);
+
+        if (!selectedOption) {
+          throw new NotFoundException("Selected account not found.");
+        }
+      } else {
         return {
           requiresSelection: true,
-          organizations: organizers.map((o) => ({
-            id: o._id.toString(),
-            organizationName: o.organizationName, // Make sure this field exists in your schema
-            name: o.name,
+          organizations: allOptions.map((opt) => ({
+            id: opt.id,
+            organizationName: opt.name,
+            type: opt.type,
+            approved: opt.approved,
           })),
         };
       }
 
-      // 4. Generate Token for the selected organization
-      const payload = {
-        name: targetOrganizer.name,
-        email: targetOrganizer.email,
-        sub: targetOrganizer._id.toString(),
-        roles: ["organizer"],
-        // Add other fields like country if needed
-      };
+      // 6️⃣ Generate JWT Payload
+      let payload: any;
+
+      if (selectedOption.type === "organizer") {
+        const organizer = organizers.find(
+          (o) => o._id.toString() === selectedOption.id,
+        );
+
+        payload = {
+          name: organizer.name,
+          email: organizer.email,
+          sub: organizer._id.toString(),
+          country: organizer.country,
+          roles: ["organizer"],
+        };
+      } else {
+        const op = operators.find(
+          (o) => o.organizerId.toString() === selectedOption.id,
+        );
+
+        const parentOrg = operatorOrgs.find(
+          (o) => o._id.toString() === op.organizerId.toString(),
+        );
+
+        if (!parentOrg) {
+          throw new NotFoundException("Parent organization not found.");
+        }
+
+        payload = {
+          name: op.name,
+          email: op.email ?? "",
+          sub: parentOrg._id.toString(),
+          operatorId: op._id.toString(),
+          country: parentOrg.country,
+          roles: ["organizer"],
+        };
+      }
 
       const token = this.jwtService.sign(payload, {
         secret: process.env.JWT_ACCESS_SECRET,
         expiresIn: "24h",
       });
 
-      return { message: "Token found", token: token };
+      return { message: "Token found", token };
     } catch (error) {
-      console.error(error);
       throw error;
     }
   }

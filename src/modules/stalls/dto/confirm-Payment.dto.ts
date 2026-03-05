@@ -8,4 +8,8 @@ export class ConfirmPaymentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  changedBy?: string;
 }

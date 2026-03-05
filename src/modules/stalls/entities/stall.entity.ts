@@ -43,6 +43,33 @@ class SelectedAddOn {
   quantity: number;
 }
 
+export enum StallStatusEnum {
+  Pending = "Pending",
+  Confirmed = "Confirmed",
+  Processing = "Processing",
+  Cancelled = "Cancelled",
+  Completed = "Completed",
+  Returned = "Returned",
+  Unpaid = "Unpaid",
+  Partial = "Partial",
+  Paid = "Paid",
+}
+
+@Schema({ _id: false })
+export class StatusHistory {
+  @Prop({ type: String, enum: StallStatusEnum, required: true })
+  status: StallStatusEnum;
+
+  @Prop({ type: String, required: false })
+  note?: string;
+
+  @Prop({ type: Date, default: Date.now })
+  changedAt: Date;
+
+  @Prop({ type: String, required: false })
+  changedBy?: string;
+}
+
 @Schema({ timestamps: true })
 export class Stall {
   @Prop({ type: Types.ObjectId, ref: "Shopkeeper", required: true })
@@ -56,7 +83,7 @@ export class Stall {
 
   // Request Status - Workflow status
   @Prop({
-    enum: ["Pending", "Confirmed", "Cancelled", "Processing", "Completed"],
+    enum: StallStatusEnum,
     default: "Pending",
   })
   status: string;
@@ -195,6 +222,19 @@ export class Stall {
 
   @Prop()
   couponCodeApplied?: string;
+
+  @Prop({
+    type: [
+      {
+        status: { type: String, enum: StallStatusEnum },
+        note: { type: String },
+        changedAt: { type: Date, default: Date.now },
+        changedBy: { type: String },
+      },
+    ],
+    default: [],
+  })
+  statusHistory: StatusHistory[];
 
   @Prop({ default: Date.now })
   updatedAt: Date;

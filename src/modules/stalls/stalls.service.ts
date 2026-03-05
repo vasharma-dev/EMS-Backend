@@ -420,7 +420,14 @@ export class StallsService {
       stall.completionDate = new Date();
       stall.remainingAmount = 0;
       stall.qrCodePath = qrCodeBase64;
-      if (notes) stall.notes = notes;
+      stall.statusHistory.push({
+        status: "Completed" as any,
+        note: notes || "Payment confirmed. Stall completed.",
+        changedAt: new Date(),
+        changedBy: "System",
+      });
+
+      await stall.save();
 
       await stall.save();
 
@@ -1217,7 +1224,16 @@ Thank you for choosing Eventsh! 🎊`;
 
       const updateData: any = {
         paymentStatus: updateDto.paymentStatus,
-        notes: updateDto.notes || stall.notes,
+        $push: {
+          statusHistory: {
+            status: `${updateDto.paymentStatus}` as any,
+            note:
+              updateDto.notes ||
+              `Payment status changed to ${updateDto.paymentStatus}`,
+            changedAt: new Date(),
+            changedBy: updateDto.changedBy || "organizer",
+          },
+        },
       };
 
       if (
@@ -1277,7 +1293,14 @@ Thank you for choosing Eventsh! 🎊`;
 
       const updateData: any = {
         status: updateDto.status,
-        notes: updateDto.notes || stall.notes,
+        $push: {
+          statusHistory: {
+            status: updateDto.status,
+            note: updateDto.notes || `Status changed to ${updateDto.status}`,
+            changedAt: new Date(),
+            changedBy: updateDto.changedBy || "organizer",
+          },
+        },
       };
 
       if (updateDto.status === "Confirmed") {
@@ -1591,14 +1614,22 @@ Thank you for choosing Eventsh! 🎊`;
     }
   }
 
-  async returnedDeposit(stallId: string) {
+  async returnedDeposit(stallId: string, notes: string) {
     try {
       const stall = await this.stallModel.findById(stallId);
 
       if (stall.hasCheckedOut && stall.checkOutTime) {
         const now = new Date();
         stall.depositReturned = true;
+        stall.status = "Returned";
         stall.depositReturnedDate = now;
+        stall.statusHistory.push({
+          status: "Returned" as any,
+          note: notes,
+          changedAt: now,
+          changedBy: "organizer",
+        });
+
         await stall.save();
 
         await this.sendDepositReturnedNotification(stall);

@@ -87,7 +87,8 @@ export class TableTemplateDto {
 
   @IsNumber()
   @Min(1)
-  rowNumber: number;
+  @IsOptional()
+  rowNumber?: number;
 
   @IsNumber()
   @Min(0)

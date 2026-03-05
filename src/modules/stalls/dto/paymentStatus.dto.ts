@@ -14,4 +14,8 @@ export class UpdatePaymentStatusDto {
   @IsOptional()
   @IsBoolean()
   generateQr?: boolean; // New field to trigger QR generation on 'Paid' status
+
+  @IsOptional()
+  @IsString()
+  changedBy?: string;
 }
