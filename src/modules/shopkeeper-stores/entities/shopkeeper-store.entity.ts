@@ -38,6 +38,7 @@ export interface StorefrontSettings {
       allProducts: string;
       visibleFeaturedProducts: boolean;
       visibleAdvertismentBar: boolean;
+      visibleProductCarausel: boolean;
       advertiseText: string;
       adBarBgcolor: string;
       adBarTextColor: string;
@@ -131,6 +132,7 @@ export class ShopfrontStore {
           featuredProducts: "modern",
           quickPicks: "modern",
           banner: "modern",
+          visibleProductCarausel: false,
           footer: "modern",
         },
         bannerImage: "",

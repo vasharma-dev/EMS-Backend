@@ -39,6 +39,7 @@ export class UpdateShopkeeperStoreDto {
     layout?: {
       header?: string;
       visibleAdvertismentBar?: boolean;
+      visibleProductCarausel?: boolean;
       advertiseText?: string;
       adBarBgcolor?: string;
       adBarTextColor?: string;

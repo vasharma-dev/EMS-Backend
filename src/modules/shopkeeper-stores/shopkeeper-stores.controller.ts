@@ -50,7 +50,7 @@ const storage = diskStorage({
 @Controller("shopkeeper-stores")
 export class ShopkeeperStoresController {
   constructor(
-    private readonly shopkeeperStoresService: ShopkeeperStoresService
+    private readonly shopkeeperStoresService: ShopkeeperStoresService,
   ) {}
 
   @Post("add-store-settings")
@@ -120,8 +120,8 @@ export class ShopkeeperStoresController {
           }
         },
         limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-      }
-    )
+      },
+    ),
   )
   async update(
     @Req() req: any,
@@ -130,7 +130,7 @@ export class ShopkeeperStoresController {
       bannerImage?: Express.Multer.File[];
       heroBannerImage?: Express.Multer.File[];
     },
-    @Body() updateShopkeeperStoreDto: UpdateShopkeeperStoreDto
+    @Body() updateShopkeeperStoreDto: UpdateShopkeeperStoreDto,
   ) {
     try {
       const id = req.user.userId;
@@ -170,7 +170,7 @@ export class ShopkeeperStoresController {
         id,
         updateShopkeeperStoreDto,
         bannerImagePath, // undefined if no file
-        heroBannerImagePath // undefined if no file
+        heroBannerImagePath, // undefined if no file
       );
     } catch (error) {
       console.log("Update error:", error);
