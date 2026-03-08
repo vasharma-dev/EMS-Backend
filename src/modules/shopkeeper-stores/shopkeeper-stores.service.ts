@@ -70,6 +70,8 @@ export class ShopkeeperStoresService {
                 createShopkeeperStoreDto.design.layout.visibleFeaturedProducts,
               visibleAdvertismentBar:
                 createShopkeeperStoreDto.design.layout.visibleAdvertismentBar,
+              visibleProductCarausel:
+                createShopkeeperStoreDto.design.layout.visibleProductCarausel,
               advertiseText:
                 createShopkeeperStoreDto.design.layout.advertiseText ?? "",
               adBarBgcolor:
@@ -110,8 +112,6 @@ export class ShopkeeperStoresService {
 
       const result = await shopfrontStore.save();
 
-      console.log(result, "result");
-
       return {
         message: "Shopfront settings created successfully",
         data: result,
@@ -149,7 +149,6 @@ export class ShopkeeperStoresService {
         .findOne({ slug: slug })
         .exec();
 
-      console.log(store, "Store");
       if (store) {
         return store;
       }
@@ -163,7 +162,6 @@ export class ShopkeeperStoresService {
             lower: true,
             strict: true,
           });
-          console.log(genSlug, "genSlug");
 
           if (genSlug === slug) {
             // Save slug for faster future lookup

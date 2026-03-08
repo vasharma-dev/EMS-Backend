@@ -718,8 +718,6 @@ export class OrganizersService {
         throw new BadRequestException("Invalid shopkeeper id");
       }
 
-      console.log(body);
-
       const update: Record<string, any> = {};
 
       // ✅ EXISTING FIELDS
@@ -824,8 +822,6 @@ export class OrganizersService {
       } else if (body.paymentURL !== undefined) {
         update.paymentURL = body.paymentURL;
       }
-
-      console.log("Update payload:", update);
 
       const updated = await this.organizerModel
         .findByIdAndUpdate(id, update, { new: true, runValidators: true })

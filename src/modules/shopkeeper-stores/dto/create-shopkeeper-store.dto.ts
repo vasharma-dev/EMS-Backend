@@ -39,6 +39,7 @@ class LayoutSettingsDto {
   @IsString() header: string;
   @IsString() allProducts: string;
   @IsBoolean() visibleFeaturedProducts: boolean;
+  @IsBoolean() visibleProductCarausel: boolean;
   @IsBoolean() visibleAdvertismentBar?: boolean;
   @IsString() advertiseText?: string;
   @IsString() adBarBgcolor?: string;

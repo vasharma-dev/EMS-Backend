@@ -146,8 +146,6 @@ export class OrganizersController {
         ? `/uploads/organizerPayments/${paymentFile.filename}`
         : null;
 
-      console.log(paymentQrPublicUrl, "-------------------");
-
       return this.organizersService.updateProfile(id, body, paymentQrPublicUrl);
     } catch (error) {
       console.log(error);
