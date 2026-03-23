@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { Event, EventDocument } from "./schemas/event.schema";
@@ -26,6 +30,17 @@ export class EventsService {
         endTime.setHours(23, 59, 59, 999);
       }
 
+      if (
+        createEventDto.hasSpeakers &&
+        createEventDto.speakerSlots?.length > 0
+      ) {
+        this.validateAllSpeakerSlots(
+          createEventDto.speakerSlots,
+          startDate,
+          endTime,
+        );
+      }
+
       const event = new this.eventModel({
         title: createEventDto.title,
         description: createEventDto.description,
@@ -42,6 +57,7 @@ export class EventsService {
         visibility: createEventDto.visibility || "public",
         inviteLink: createEventDto.inviteLink,
         tags: createEventDto.tags || [],
+        visitorTypes: createEventDto.visitorTypes || [],
         features: createEventDto.features || {
           food: false,
           parking: false,
@@ -65,15 +81,18 @@ export class EventsService {
         },
         image: createEventDto.image,
         gallery: createEventDto.gallery || [],
-        tableTemplates: createEventDto.tableTemplates || [],
+
         termsAndConditionsforStalls:
           createEventDto.termsAndConditionsforStalls || [],
-        venueTables: createEventDto.venueTables || [],
         addOnItems: createEventDto.addOnItems || [],
 
-        // IMPORTANT: venueConfig is now an ARRAY
-        venueConfig:
-          createEventDto.venueConfig && createEventDto.venueConfig.length > 0
+        // WITH THIS:
+        hasVenue: createEventDto.hasVenue || false,
+        hasTables: createEventDto.hasTables || false,
+        hasSpeakers: createEventDto.hasSpeakers || false,
+
+        venueConfig: createEventDto.hasVenue
+          ? createEventDto.venueConfig?.length > 0
             ? createEventDto.venueConfig
             : [
                 {
@@ -86,7 +105,22 @@ export class EventsService {
                   hasMainStage: true,
                   totalRows: 3,
                 },
-              ],
+              ]
+          : [],
+
+        tableTemplates: createEventDto.hasTables
+          ? createEventDto.tableTemplates || []
+          : [],
+        venueTables: createEventDto.hasTables
+          ? createEventDto.venueTables || []
+          : [],
+
+        speakerTemplates: createEventDto.hasSpeakers
+          ? createEventDto.speakerTemplates || []
+          : [],
+        speakerSlots: createEventDto.hasSpeakers
+          ? createEventDto.speakerSlots || []
+          : [],
 
         status: createEventDto.status || "draft",
         featured: createEventDto.featured || false,
@@ -243,5 +277,98 @@ export class EventsService {
       console.error("Error searching events:", error);
       throw error;
     }
+  }
+
+  private validateSpeakerBooking(
+    booking: any,
+    slot: any,
+    eventStart: Date,
+    eventEnd: Date,
+  ) {
+    const bStart = new Date(booking.startTime);
+    const bEnd = new Date(booking.endTime);
+    const slotFrom = new Date(slot.availableFrom);
+    const slotTo = new Date(slot.availableTo);
+
+    // 1. startTime before endTime
+    if (bStart >= bEnd)
+      throw new BadRequestException(
+        `"${booking.speakerName}": startTime must be before endTime`,
+      );
+
+    // 2. Slot window must be within event window
+    if (slotFrom < eventStart || slotTo > eventEnd)
+      throw new BadRequestException(
+        `Slot "${slot.slotName}": availableFrom/To must be within event duration`,
+      );
+
+    // 3. Booking chunk must be within slot window
+    if (bStart < slotFrom || bEnd > slotTo)
+      throw new BadRequestException(
+        `"${booking.speakerName}": booking time must be within slot window ` +
+          `(${slot.availableFrom} → ${slot.availableTo})`,
+      );
+
+    // 4. No overlap with existing bookings in the same slot
+    const hasOverlap = slot.bookings?.some((b: any) => {
+      const eStart = new Date(b.startTime);
+      const eEnd = new Date(b.endTime);
+      return bStart < eEnd && bEnd > eStart;
+    });
+
+    if (hasOverlap)
+      throw new BadRequestException(
+        `"${booking.speakerName}": time overlaps with an existing speaker in slot "${slot.slotName}"`,
+      );
+
+    // 5. Max speakers check
+    if ((slot.bookings?.length || 0) >= slot.maxSpeakersPerSlot)
+      throw new BadRequestException(
+        `Slot "${slot.slotName}" is full (max ${slot.maxSpeakersPerSlot} speakers)`,
+      );
+  }
+
+  private validateAllSpeakerSlots(
+    speakerSlots: any[],
+    eventStart: Date,
+    eventEnd: Date,
+  ) {
+    for (const slot of speakerSlots) {
+      const validated: any[] = [];
+      for (const booking of slot.bookings || []) {
+        this.validateSpeakerBooking(
+          booking,
+          { ...slot, bookings: validated },
+          eventStart,
+          eventEnd,
+        );
+        validated.push(booking);
+      }
+    }
+  }
+
+  async bookSpeakerSlot(
+    eventId: string,
+    slotId: string,
+    booking: any,
+  ): Promise<Event> {
+    const event = await this.eventModel.findById(eventId);
+    if (!event) throw new NotFoundException(`Event ${eventId} not found`);
+
+    const slot = (event as any).speakerSlots.find(
+      (s: any) => s.slotId === slotId,
+    );
+    if (!slot) throw new NotFoundException(`Slot ${slotId} not found`);
+
+    this.validateSpeakerBooking(booking, slot, event.startDate, event.endDate);
+
+    slot.bookings.push({
+      ...booking,
+      startTime: new Date(booking.startTime),
+      endTime: new Date(booking.endTime),
+    });
+
+    event.markModified("speakerSlots");
+    return event.save();
   }
 }

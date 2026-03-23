@@ -42,6 +42,28 @@ const imageFilter = (req: any, file: any, cb: any) => {
   }
 };
 
+function parseFormDataFields(body: any) {
+  const jsonFields = [
+    "tags",
+    "features",
+    "socialMedia",
+    "tableTemplates",
+    "venueTables",
+    "addOnItems",
+    "venueConfig",
+    "visitorTypes",
+    "termsAndConditionsforStalls",
+    "speakerTemplates",
+    "speakerSlots",
+  ];
+  for (const field of jsonFields) {
+    if (typeof body[field] === "string") body[field] = JSON.parse(body[field]);
+  }
+  for (const field of ["hasVenue", "hasTables", "hasSpeakers"]) {
+    if (typeof body[field] === "string") body[field] = body[field] === "true";
+  }
+}
+
 @Controller("events")
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
@@ -80,53 +102,7 @@ export class EventsController {
       body.organizerId = req.user.sub || body.organizerId;
 
       // Parse JSON strings from FormData
-      if (typeof body.tags === "string") body.tags = JSON.parse(body.tags);
-      if (typeof body.features === "string")
-        body.features = JSON.parse(body.features);
-      if (typeof body.socialMedia === "string")
-        body.socialMedia = JSON.parse(body.socialMedia);
-      if (typeof body.tableTemplates === "string")
-        body.tableTemplates = JSON.parse(body.tableTemplates);
-      if (typeof body.venueTables === "string")
-        body.venueTables = JSON.parse(body.venueTables);
-      if (typeof body.addOnItems === "string")
-        body.addOnItems = JSON.parse(body.addOnItems);
-      if (typeof body.venueConfig === "string")
-        body.venueConfig = JSON.parse(body.venueConfig);
-
-      if (typeof body.termsAndConditionsforStalls === "string")
-        body.termsAndConditionsforStalls = JSON.parse(
-          body.termsAndConditionsforStalls,
-        );
-
-      // Handle banner image
-      if (files.banner && files.banner[0]) {
-        body.image = `/uploads/events/${files.banner[0].filename}`;
-      }
-
-      // Handle gallery images
-      if (files.gallery && files.gallery.length > 0) {
-        body.gallery = files.gallery.map(
-          (file) => `/uploads/events/${file.filename}`,
-        );
-      }
-
-      if (
-        files.addOnImages &&
-        files.addOnImages.length > 0 &&
-        Array.isArray(body.addOnItems)
-      ) {
-        let imageIndex = 0;
-
-        body.addOnItems = body.addOnItems.map((addon) => {
-          // If the frontend marks that this specific add-on has a newly uploaded file
-          if (addon.hasNewImage && imageIndex < files.addOnImages.length) {
-            addon.image = `/uploads/events/${files.addOnImages[imageIndex].filename}`;
-            imageIndex++;
-          }
-          return addon;
-        });
-      }
+      parseFormDataFields(body);
 
       const event = await this.eventsService.create(body);
 
@@ -236,56 +212,7 @@ export class EventsController {
   ) {
     try {
       // Parse JSON strings from FormData
-      if (typeof body.tags === "string") body.tags = JSON.parse(body.tags);
-      if (typeof body.features === "string")
-        body.features = JSON.parse(body.features);
-      if (typeof body.socialMedia === "string")
-        body.socialMedia = JSON.parse(body.socialMedia);
-      if (typeof body.tableTemplates === "string")
-        body.tableTemplates = JSON.parse(body.tableTemplates);
-      if (typeof body.venueTables === "string")
-        body.venueTables = JSON.parse(body.venueTables);
-      if (typeof body.addOnItems === "string")
-        body.addOnItems = JSON.parse(body.addOnItems);
-      if (typeof body.venueConfig === "string")
-        body.venueConfig = JSON.parse(body.venueConfig);
-
-      if (typeof body.termsAndConditionsforStalls === "string")
-        body.termsAndConditionsforStalls = JSON.parse(
-          body.termsAndConditionsforStalls,
-        );
-
-      // Handle new banner image
-      if (files.banner && files.banner[0]) {
-        body.image = `/uploads/events/${files.banner[0].filename}`;
-      }
-
-      // Handle new gallery images
-      if (files.gallery && files.gallery.length > 0) {
-        body.gallery = files.gallery.map(
-          (file) => `/uploads/events/${file.filename}`,
-        );
-      }
-
-      // 3. Handle Add-On Images (Mapping new files to correct items)
-      if (
-        files.addOnImages &&
-        files.addOnImages.length > 0 &&
-        Array.isArray(body.addOnItems)
-      ) {
-        let imageIndex = 0;
-
-        body.addOnItems = body.addOnItems.map((addon) => {
-          // If frontend says a new image was uploaded for this item
-          if (addon.hasNewImage && imageIndex < files.addOnImages.length) {
-            addon.image = `/uploads/events/${files.addOnImages[imageIndex].filename}`;
-            imageIndex++;
-          }
-          // Remove the helper flag before saving to DB
-          delete addon.hasNewImage;
-          return addon;
-        });
-      }
+      parseFormDataFields(body);
 
       const event = await this.eventsService.update(id, body);
 
@@ -331,6 +258,33 @@ export class EventsController {
       };
     } catch (error) {
       console.error("Error in deleteEvent:", error);
+      throw error;
+    }
+  }
+
+  @Post(":id/speaker-slots/:slotId/book")
+  @UseGuards(AuthGuard("jwt"))
+  async bookSpeakerSlot(
+    @Param("id") id: string,
+    @Param("slotId") slotId: string,
+    @Body() booking: any,
+    @Req() req: any,
+  ) {
+    try {
+      booking.speakerId = req.user.sub;
+      booking.bookedByOrganizer = false;
+      const event = await this.eventsService.bookSpeakerSlot(
+        id,
+        slotId,
+        booking,
+      );
+      return {
+        success: true,
+        message: "Speaker slot booked successfully",
+        data: event,
+      };
+    } catch (error) {
+      console.error("Error in bookSpeakerSlot:", error);
       throw error;
     }
   }

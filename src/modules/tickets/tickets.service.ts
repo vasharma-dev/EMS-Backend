@@ -29,7 +29,7 @@ export class TicketsService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly usersService: UsersService,
     private mailService: MailService,
-    private otpService: OtpService
+    private otpService: OtpService,
   ) {
     const qrDir = path.join(process.cwd(), "uploads", "generatedQRs");
     if (!fs.existsSync(qrDir)) fs.mkdirSync(qrDir, { recursive: true });
@@ -72,10 +72,11 @@ export class TicketsService {
         ticketType: t.type,
         quantity: t.quantity,
         price: t.price,
+        featureAccess: Array.isArray(t.featureAccess) ? t.featureAccess : [],
       }));
       const totalQuantity = createTicketDto.tickets.reduce(
         (acc, t) => acc + t.quantity,
-        0
+        0,
       );
 
       // 3. Generate secure QR payload
@@ -87,6 +88,12 @@ export class TicketsService {
         eventId: createTicketDto.eventId,
         coupon: createTicketDto.coupon || null,
         issuedAt: new Date().toISOString(),
+        // Ticket type + feature info for scanner app
+        tickets: createTicketDto.tickets.map((t) => ({
+          ticketType: t.type,
+          quantity: t.quantity,
+          featureAccess: Array.isArray(t.featureAccess) ? t.featureAccess : [],
+        })),
       };
 
       console.log("QR Payload:", qrPayload);
@@ -128,8 +135,16 @@ export class TicketsService {
         userId: user._id,
       });
 
+      await this.updateEventTicketCount(
+        createTicketDto.eventId,
+        createTicketDto.tickets.map((t) => ({
+          type: t.type,
+          quantity: t.quantity,
+        })),
+      );
+
       const savedTicket = await ticket.save();
-      await this.updateEventTicketCount(createTicketDto.eventId, totalQuantity);
+      
 
       // 5. Delivery - WhatsApp or Email fallback (prefer WhatsApp)
       if (whatsAppNumber) {
@@ -139,7 +154,7 @@ export class TicketsService {
           await this.sendTicketViaWhatsApp(
             savedTicket,
             qrCodeBase64,
-            whatsAppNumber
+            whatsAppNumber,
           );
         } catch (error) {
           // throw error;
@@ -155,7 +170,7 @@ export class TicketsService {
       return savedTicket;
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to create ticket: ${error.message}`
+        `Failed to create ticket: ${error.message}`,
       );
     }
   }
@@ -163,65 +178,91 @@ export class TicketsService {
   // --- Puppeteer PDF Generation ---
   private generateTicketHTML(ticket: Ticket, qrBase64: string): string {
     const eventDate = new Date(ticket.eventDate).toLocaleDateString();
+
+    // Build ticket type breakdown rows
+    const ticketBreakdownRows = ticket.ticketDetails
+      .map((td) => {
+        const features =
+          Array.isArray(td.featureAccess) && td.featureAccess.length > 0
+            ? td.featureAccess
+                .map(
+                  (f) =>
+                    `<span style="display:inline-block;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:20px;padding:2px 10px;font-size:12px;margin:2px;font-weight:600;text-transform:capitalize;">✓ ${f}</span>`,
+                )
+                .join("")
+            : `<span style="font-size:12px;color:#94a3b8;">No special access</span>`;
+
+        return `
+        <div style="background:#f9fafb;border-radius:8px;padding:12px 16px;margin-bottom:10px;border:1px solid #e5e7eb;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-weight:700;font-size:15px;color:#1e293b;">🎟 ${td.ticketType}</span>
+            <span style="font-size:14px;color:#475569;">× ${td.quantity} &nbsp;|&nbsp; $${(td.price * td.quantity).toFixed(2)}</span>
+          </div>
+          <div style="margin-top:5px;">${features}</div>
+        </div>`;
+      })
+      .join("");
+
     return `<!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>Eventsh Ticket</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-        body { font-family: 'Roboto', Arial, sans-serif; margin:0;background:#fff;color:#18181b; }
-        .header { background:#3b82f6; color:white; text-align:center; padding:36px 24px 22px;}
-        .header h1 { margin:0; font-size:32px; }
-        .header .subtitle { margin:7px 0 0 0; font-size:19px; opacity:0.93; }
-        .container { max-width:650px; margin:0 auto; background:white; border:2.5px solid #e5e7eb; border-radius:15px; overflow:hidden; }
-        .details { padding:28px;}
-        .detailsTitle { font-size:22px; font-weight:bold; margin-bottom:18px; color:#1e293b;}
-        .info { background:#f3f4f6; border-radius:9px; padding:16px 20px; margin-bottom:18px;}
-        .info p { margin:0 0 5px 0; font-size:16px; line-height:1.45;}
-        .ticket-breakdown { background:#f9fafb; border-radius:8px; padding:12px 18px; margin-bottom:18px; font-size:14px;}
-        .qr-section {margin:25px 0; text-align:center;}
-        .qr-section img { border-radius:10px; border:2px solid #e5e7eb; width:200px; height:200px; margin-bottom:7px;}
-        .info-warning { background:#fef2f2; border:1.5px solid #fecaca; border-radius:10px; margin-top:16px; color:#dc2626; padding:10px 12px; font-size:14.5px;}
-        .footer {padding:13px; background:#f1f5f9; color:#64748b; font-size:12px; text-align:center; border-top:2px solid #e5e7eb;}
-        .bold {font-weight:bold;}
-        .emoji {font-size:18px; margin-right:7px; vertical-align:-2px;}
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>EVENTSH TICKET</h1>
-          <div class="subtitle">${ticket.eventTitle}</div>
-        </div>
-        <div class="details">
-          <div class="detailsTitle">Ticket Details</div>
-          <div class="info">
-            <p><span class="emoji"></span><span class="bold">Ticket ID:</span> ${ticket.ticketId}</p>
-            <p><span class="emoji"></span><span class="bold">Attendee:</span> ${ticket.customerName}</p>
-            <p><span class="emoji"></span><span class="bold">Date:</span> ${eventDate}</p>
-            <p><span class="emoji"></span><span class="bold">Time:</span> ${ticket.eventTime || "N/A"}</p>
-            <p><span class="emoji"></span><span class="bold">Venue:</span> ${ticket.eventVenue || "N/A"}</p>
-            <p><span class="emoji"></span><span class="bold">Total:</span> $${ticket.totalAmount?.toFixed(2) || "0.00"}</p>
-          </div>
-          <div class="qr-section">
-            <div style="font-size:16px; margin-bottom:5px;">Scan at Event Entrance</div>
-            <img src="${qrBase64}" alt="Ticket QR Code" />
-          </div>
-          <div class="info-warning">
-            <span class="emoji">⚠️</span>
-            <span>This QR code can ONLY be scanned using the official Eventsh app. Normal camera scanners will not work.</span>
-          </div>
-        </div>
-        <div class="footer">© ${new Date().getFullYear()} Eventsh. All rights reserved.</div>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Eventsh Ticket</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin:0; background:#fff; color:#18181b; }
+      .header { background: linear-gradient(135deg, #3b82f6, #6366f1); color:white; text-align:center; padding:30px 24px 20px; }
+      .header h1 { margin:0; font-size:28px; }
+      .header .subtitle { margin:6px 0 0 0; font-size:17px; opacity:0.93; }
+      .container { max-width:620px; margin:0 auto; background:white; border:2px solid #e5e7eb; border-radius:14px; overflow:hidden; }
+      .details { padding:24px; }
+      .detailsTitle { font-size:20px; font-weight:bold; margin-bottom:16px; color:#1e293b; }
+      .info { background:#f3f4f6; border-radius:9px; padding:14px 18px; margin-bottom:16px; }
+      .info p { margin:0 0 6px 0; font-size:15px; line-height:1.5; }
+      .section-title { font-size:15px; font-weight:700; color:#1e293b; margin:16px 0 8px 0; }
+      .qr-section { margin:20px 0; text-align:center; }
+      .qr-section img { border-radius:10px; border:2px solid #e5e7eb; width:200px; height:200px; }
+      .info-warning { background:#fef2f2; border:1.5px solid #fecaca; border-radius:10px; margin-top:14px; color:#dc2626; padding:10px 12px; font-size:13px; }
+      .footer { padding:12px; background:#f1f5f9; color:#64748b; font-size:12px; text-align:center; border-top:1px solid #e5e7eb; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>EVENTSH TICKET</h1>
+        <div class="subtitle">${ticket.eventTitle}</div>
       </div>
-    </body>
-    </html>`;
+      <div class="details">
+        <div class="detailsTitle">Ticket Details</div>
+        <div class="info">
+          <p><strong>🎫 Ticket ID:</strong> ${ticket.ticketId}</p>
+          <p><strong>👤 Attendee:</strong> ${ticket.customerName}</p>
+          <p><strong>📅 Date:</strong> ${eventDate}</p>
+          <p><strong>🕒 Time:</strong> ${ticket.eventTime || "N/A"}</p>
+          <p><strong>📍 Venue:</strong> ${ticket.eventVenue || "N/A"}</p>
+          <p><strong>💰 Total:</strong> $${ticket.totalAmount?.toFixed(2) || "0.00"}</p>
+        </div>
+
+        <div class="section-title">🎟 Ticket Type(s) & Feature Access</div>
+        ${ticketBreakdownRows}
+
+        <div class="qr-section">
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#1e293b;">Scan at Event Entrance</div>
+          <img src="${qrBase64}" alt="Ticket QR Code" />
+          <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Use the official Eventsh app to scan</div>
+        </div>
+        <div class="info-warning">
+          ⚠️ <strong>Important:</strong> This QR code can ONLY be scanned using the official Eventsh app. Normal camera scanners will not work.
+        </div>
+      </div>
+      <div class="footer">© ${new Date().getFullYear()} Eventsh. All rights reserved.</div>
+    </div>
+  </body>
+  </html>`;
   }
 
   private async generateTicketPDF(
     ticket: Ticket,
-    qrBase64: string
+    qrBase64: string,
   ): Promise<Buffer> {
     const html = this.generateTicketHTML(ticket, qrBase64);
     const browser = await puppeteer.launch({
@@ -243,7 +284,7 @@ export class TicketsService {
   private async sendTicketViaWhatsApp(
     ticket: Ticket,
     qrBase64: string,
-    whatsappNumber: string
+    whatsappNumber: string,
   ): Promise<void> {
     try {
       console.log("Called 1");
@@ -255,6 +296,16 @@ export class TicketsService {
       await fs.promises.writeFile(pdfPath, pdfBuffer);
 
       const eventDate = new Date(ticket.eventDate).toLocaleDateString();
+      const ticketLines = ticket.ticketDetails
+        .map((td) => {
+          const features =
+            Array.isArray(td.featureAccess) && td.featureAccess.length > 0
+              ? `\n   ✅ Features: ${td.featureAccess.join(", ")}`
+              : "";
+          return `🎟 *${td.ticketType}* × ${td.quantity} — $${(td.price * td.quantity).toFixed(2)}${features}`;
+        })
+        .join("\n");
+
       const message = `🎉 *Your Eventsh Ticket is Ready!*
 
 🎫 *Event:* ${ticket.eventTitle}
@@ -264,16 +315,18 @@ export class TicketsService {
 📍 *Venue:* ${ticket.eventVenue || "N/A"}
 💰 *Total Amount:* $${ticket.totalAmount?.toFixed(2) || "0.00"}
 
+*Your Tickets:*
+${ticketLines}
+
 ⚠️ *Important:* Your ticket PDF is attached. Please save it and present the QR code at the event entrance.
 The QR code can ONLY be scanned using the official Eventsh app.
 
 Thank you for choosing Eventsh! 🎊`;
-
       await this.otpService.sendWhatsAppMessage(whatsappNumber, message);
       await this.otpService.sendMediaMessage(
         whatsappNumber,
         pdfPath,
-        `🎫 Your ticket for ${ticket.eventTitle}`
+        `🎫 Your ticket for ${ticket.eventTitle}`,
       );
     } catch (error) {
       throw error;
@@ -282,41 +335,62 @@ Thank you for choosing Eventsh! 🎊`;
 
   private async sendTicketViaEmail(
     ticket: Ticket,
-    qrBase64: string
+    qrBase64: string,
   ): Promise<void> {
     try {
       const eventDate = new Date(ticket.eventDate).toLocaleDateString();
+      const emailTicketRows = ticket.ticketDetails
+        .map((td) => {
+          const features =
+            Array.isArray(td.featureAccess) && td.featureAccess.length > 0
+              ? td.featureAccess
+                  .map(
+                    (f) =>
+                      `<span style="display:inline-block;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:20px;padding:2px 8px;font-size:12px;margin:2px;font-weight:600;text-transform:capitalize;">✓ ${f}</span>`,
+                  )
+                  .join("")
+              : `<span style="font-size:12px;color:#94a3b8;">No special access</span>`;
+          return `
+      <div style="background:#f9fafb;border-radius:8px;padding:10px 14px;margin-bottom:8px;border:1px solid #e5e7eb;">
+        <div style="display:flex;justify-content:space-between;">
+          <strong>🎟 ${td.ticketType}</strong>
+          <span>× ${td.quantity} | $${(td.price * td.quantity).toFixed(2)}</span>
+        </div>
+        <div style="margin-top:5px;">${features}</div>
+      </div>`;
+        })
+        .join("");
+
       const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-          <div style="background: linear-gradient(135deg, #3b82f6, #6366f1); color: white; padding: 30px; text-align: center;">
-            <h1 style="margin: 0; font-size: 24px;">EVENTSH TICKET</h1>
-            <p style="margin: 8px 0 0 0; opacity: 0.9;">${ticket.eventTitle}</p>
-          </div>
-          <div style="padding: 25px;">
-            <h2 style="color: #1e293b; font-size: 18px; margin-bottom: 20px;">Ticket Details</h2>
-            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <p><strong>🎫 Ticket ID:</strong> ${ticket.ticketId}</p>
-              <p><strong>👤 Attendee:</strong> ${ticket.customerName}</p>
-              <p><strong>📅 Date:</strong> ${eventDate}</p>
-              <p><strong>🕒 Time:</strong> ${ticket.eventTime || "N/A"}</p>
-              <p><strong>📍 Venue:</strong> ${ticket.eventVenue || "N/A"}</p>
-              <p><strong>💰 Total Amount:</strong> $${ticket.totalAmount?.toFixed(2) || "0.00"}</p>
-            </div>
-            <div style="text-align: center; margin: 25px 0;">
-              <p style="margin-bottom: 15px; font-weight: 600; color: #1e293b;">Scan at Event Entrance</p>
-              <img src="cid:qrcodeeventsh" alt="Ticket QR Code" style="width: 200px; height: 200px; border: 2px solid #e2e8f0; border-radius: 8px;" />
-            </div>
-            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin-top: 20px;">
-              <p style="margin: 0; color: #dc2626; font-size: 14px;">
-                ⚠️ <strong>Important:</strong> This QR code can ONLY be scanned using the official Eventsh app.<br>
-                Normal camera scanners will not work.
-              </p>
-            </div>
-          </div>
-          <div style="background: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #64748b;">
-            <p style="margin: 0;">© ${new Date().getFullYear()} Eventsh. All rights reserved.</p>
-          </div>
-        </div>`;
+  <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#3b82f6,#6366f1);color:white;padding:30px;text-align:center;">
+      <h1 style="margin:0;font-size:24px;">EVENTSH TICKET</h1>
+      <p style="margin:8px 0 0 0;opacity:0.9;">${ticket.eventTitle}</p>
+    </div>
+    <div style="padding:25px;">
+      <h2 style="color:#1e293b;font-size:18px;margin-bottom:16px;">Ticket Details</h2>
+      <div style="background:#f8fafc;padding:15px;border-radius:8px;margin-bottom:16px;">
+        <p><strong>🎫 Ticket ID:</strong> ${ticket.ticketId}</p>
+        <p><strong>👤 Attendee:</strong> ${ticket.customerName}</p>
+        <p><strong>📅 Date:</strong> ${eventDate}</p>
+        <p><strong>🕒 Time:</strong> ${ticket.eventTime || "N/A"}</p>
+        <p><strong>📍 Venue:</strong> ${ticket.eventVenue || "N/A"}</p>
+        <p><strong>💰 Total Amount:</strong> $${ticket.totalAmount?.toFixed(2) || "0.00"}</p>
+      </div>
+      <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 10px 0;">🎟 Ticket Type(s) & Feature Access</h3>
+      ${emailTicketRows}
+      <div style="text-align:center;margin:25px 0;">
+        <p style="margin-bottom:12px;font-weight:600;color:#1e293b;">Scan at Event Entrance</p>
+        <img src="cid:qrcodeeventsh" alt="Ticket QR Code" style="width:200px;height:200px;border:2px solid #e2e8f0;border-radius:8px;" />
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:15px;margin-top:16px;">
+        <p style="margin:0;color:#dc2626;font-size:14px;">⚠️ <strong>Important:</strong> This QR code can ONLY be scanned using the official Eventsh app.<br>Normal camera scanners will not work.</p>
+      </div>
+    </div>
+    <div style="background:#f1f5f9;padding:15px;text-align:center;font-size:12px;color:#64748b;">
+      <p style="margin:0;">© ${new Date().getFullYear()} Eventsh. All rights reserved.</p>
+    </div>
+  </div>`;
       await this.mailService.sendEmail({
         to: ticket.customerEmail,
         subject: `🎟️ Your Eventsh Ticket - ${ticket.eventTitle}`,
@@ -337,7 +411,7 @@ Thank you for choosing Eventsh! 🎊`;
 
   private async saveQRToDisk(
     base64Data: string,
-    ticketId: string
+    ticketId: string,
   ): Promise<string> {
     const qrDir = path.join(process.cwd(), "uploads", "generatedQRs");
     const fileName = `qr_${ticketId}.png`;
@@ -347,13 +421,51 @@ Thank you for choosing Eventsh! 🎊`;
     return filePath;
   }
 
-  private async updateEventTicketCount(eventId: string, quantity: number) {
-    const event = await this.eventModel.findOne({ _id: eventId });
+  private async updateEventTicketCount(
+    eventId: string,
+    tickets: { type: string; quantity: number }[],
+  ) {
+    const event = await this.eventModel.findById(eventId);
     if (!event) throw new NotFoundException("Event not found");
-    if (event.totalTickets < quantity)
-      throw new BadRequestException("Not enough tickets available");
-    event.totalTickets -= quantity;
-    await event.save();
+
+    // Validate all ticket types and availability first
+    for (const ticketItem of tickets) {
+      const visitorType = event.visitorTypes?.find(
+        (vt) =>
+          vt.name.toLowerCase().trim() === ticketItem.type.toLowerCase().trim(),
+      );
+
+      if (!visitorType) {
+        throw new BadRequestException(
+          `Visitor type "${ticketItem.type}" not found on this event`,
+        );
+      }
+
+      if (
+        visitorType.maxCount !== undefined &&
+        visitorType.maxCount !== null &&
+        visitorType.maxCount < ticketItem.quantity // ← check BEFORE deducting
+      ) {
+        throw new BadRequestException(
+          `Not enough tickets for "${ticketItem.type}". Available: ${visitorType.maxCount}, Requested: ${ticketItem.quantity}`,
+        );
+      }
+    }
+
+    // Apply all deductions atomically using $inc with positional filtered operator
+    for (const ticketItem of tickets) {
+      await this.eventModel.updateOne(
+        {
+          _id: eventId,
+          "visitorTypes.name": {
+            $regex: new RegExp(`^${ticketItem.type}$`, "i"),
+          },
+        },
+        {
+          $inc: { "visitorTypes.$.maxCount": -ticketItem.quantity },
+        },
+      );
+    }
   }
 
   // Removed generateTicketPDF method (not needed)
@@ -439,7 +551,7 @@ Thank you for choosing Eventsh! 🎊`;
       ([type, data]) => ({
         ticketType: type,
         ...data,
-      })
+      }),
     );
 
     const statusMap = new Map();
@@ -451,7 +563,7 @@ Thank you for choosing Eventsh! 🎊`;
       ([status, count]) => ({
         status,
         count,
-      })
+      }),
     );
 
     return {
@@ -520,7 +632,7 @@ Thank you for choosing Eventsh! 🎊`;
       const attendance = await this.ticketModel.findOneAndUpdate(
         { ticketId: ticketId },
         { $set: { attendance: true, isUsed: true } },
-        { new: true } // return the updated document
+        { new: true }, // return the updated document
       );
 
       if (!attendance) {

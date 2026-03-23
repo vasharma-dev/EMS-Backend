@@ -51,6 +51,7 @@ export class Ticket {
         ticketType: { type: String, required: true },
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
+        featureAccess: { type: [String], default: [] },
       },
     ],
     required: true,
@@ -59,6 +60,7 @@ export class Ticket {
     ticketType: string;
     quantity: number;
     price: number;
+    featureAccess?: string[];
   }>;
 
   @Prop({ required: true })

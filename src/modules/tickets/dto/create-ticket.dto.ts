@@ -19,6 +19,11 @@ export class TicketDetailDto {
 
   @IsNumber()
   price: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  featureAccess?: string[];
 }
 
 export class CustomerDetailsDto {

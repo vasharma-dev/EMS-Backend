@@ -167,6 +167,77 @@ export class AddOnItemDto {
   description?: string;
 }
 
+export class VisitorFeatureAccessDto {
+  @IsBoolean() @IsOptional() food?: boolean;
+  @IsBoolean() @IsOptional() parking?: boolean;
+  @IsBoolean() @IsOptional() wifi?: boolean;
+  @IsBoolean() @IsOptional() photography?: boolean;
+  @IsBoolean() @IsOptional() security?: boolean;
+  @IsBoolean() @IsOptional() accessibility?: boolean;
+}
+
+export class VisitorTypeDto {
+  @IsString() id: string;
+  @IsString() name: string;
+
+  @IsNumber() @Min(0) price: number;
+
+  @IsNumber() @Min(1) @IsOptional() maxCount?: number; // optional = unlimited
+
+  @IsString() @IsOptional() description?: string;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => VisitorFeatureAccessDto)
+  featureAccess?: VisitorFeatureAccessDto;
+
+  @IsBoolean() @IsOptional() isActive?: boolean;
+}
+
+export class SpeakerBookingDto {
+  @IsString() bookingId: string;
+  @IsString() @IsOptional() speakerId?: string;
+  @IsString() speakerName: string;
+  @IsString() @IsOptional() whatsAppNumber?: string;
+  @IsString() agenda: string;
+  @IsDateString() startTime: string;
+  @IsDateString() endTime: string;
+  @IsEnum(["confirmed", "pending", "cancelled"]) @IsOptional() status?: string;
+  @IsBoolean() @IsOptional() bookedByOrganizer?: boolean;
+}
+
+export class SpeakerTemplateDto {
+  @IsString() id: string;
+  @IsString() name: string;
+  @IsNumber() durationMinutes: number;
+  @IsNumber() @Min(0) slotPrice: number;
+  @IsNumber() @Min(0) bookingPrice: number;
+  @IsNumber() @Min(0) depositPrice: number;
+  @IsNumber() @Min(1) maxSpeakersPerSlot: number;
+  @IsString() @IsOptional() description?: string;
+}
+
+export class SpeakerSlotDto {
+  @IsString() slotId: string;
+  @IsString() templateId: string;
+  @IsString() slotName: string;
+  @IsString() venueConfigId: string;
+  @IsNumber() x: number;
+  @IsNumber() y: number;
+  @IsNumber() rotation: number;
+  @IsBoolean() isPlaced: boolean;
+  @IsDateString() availableFrom: string;
+  @IsDateString() availableTo: string;
+  @IsNumber() @Min(1) maxSpeakersPerSlot: number;
+  @IsNumber() @Min(0) slotPrice: number;
+  @IsNumber() @Min(0) bookingPrice: number;
+  @IsNumber() @Min(0) depositPrice: number;
+  @ValidateNested({ each: true })
+  @IsOptional()
+  @Type(() => SpeakerBookingDto)
+  bookings?: SpeakerBookingDto[];
+}
+
 // Venue configs (now array, includes venueConfigId)
 export class VenueConfigDto {
   @IsString()
@@ -250,6 +321,11 @@ export class CreateEventDto {
   @IsOptional()
   inviteLink?: string;
 
+  @ValidateNested({ each: true })
+  @IsOptional()
+  @Type(() => VisitorTypeDto)
+  visitorTypes?: VisitorTypeDto[];
+
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
@@ -312,6 +388,22 @@ export class CreateEventDto {
   @ValidateNested({ each: true })
   @Type(() => termsAndConditionsforStalls)
   termsAndConditionsforStalls?: termsAndConditionsforStalls[];
+
+  // Boolean guards
+  @IsBoolean() @IsOptional() hasVenue?: boolean;
+  @IsBoolean() @IsOptional() hasTables?: boolean;
+  @IsBoolean() @IsOptional() hasSpeakers?: boolean;
+
+  // Speaker fields
+  @ValidateNested({ each: true })
+  @IsOptional()
+  @Type(() => SpeakerTemplateDto)
+  speakerTemplates?: SpeakerTemplateDto[];
+
+  @ValidateNested({ each: true })
+  @IsOptional()
+  @Type(() => SpeakerSlotDto)
+  speakerSlots?: SpeakerSlotDto[];
 
   @ValidateNested({ each: true })
   @IsOptional()
